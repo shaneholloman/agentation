@@ -19,26 +19,13 @@ This is the publishable npm package. Changes here affect everyone who installs `
 - Consider: Does this affect the API surface?
 - Consider: Will existing users' code still work?
 
-## Structure
+## Main Export
 
-```
-src/
-├── index.ts           # Main exports
-├── types.ts           # TypeScript types (Annotation, etc.)
-├── components/
-│   ├── icons.tsx      # SVG icons
-│   ├── annotation-popup/       # Popup with framer-motion (optional export)
-│   ├── annotation-popup-css/   # Popup with CSS animations
-│   └── page-toolbar-css/       # Main floating toolbar (CSS-only)
-└── utils/
-    ├── element-identification.ts  # Smart DOM element naming
-    └── storage.ts                 # localStorage helpers
+```tsx
+import { Agentation } from 'agentation';
 ```
 
-## Exports
-
-- **`Agentation`** — The main component. CSS-only animations, no framer-motion.
-- **`AnnotationPopup`** — Optional export for custom UIs. Uses framer-motion (optional peer dep).
+CSS-only animations, no external runtime dependencies beyond React.
 
 ## Testing Changes
 
