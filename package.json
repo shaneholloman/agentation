@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "pnpm --filter agentation watch & pnpm --filter feedback-tool-example dev",
     "build": "pnpm --filter agentation build",
-    "example": "pnpm --filter feedback-tool-example dev"
+    "example": "pnpm --filter feedback-tool-example dev",
+    "pack": "cd _package-export && pnpm pack"
   }
 }

@@ -14,7 +14,6 @@
 // Main components
 // CSS-only version (default - zero runtime deps)
 export { PageFeedbackToolbarCSS as Agentation } from "./components/page-toolbar-css";
-export { PageFeedbackToolbarCSS as AgentationCSS } from "./components/page-toolbar-css"; // Deprecated: use Agentation
 export { PageFeedbackToolbarCSS } from "./components/page-toolbar-css";
 export type { DemoAnnotation } from "./components/page-toolbar-css";
 
