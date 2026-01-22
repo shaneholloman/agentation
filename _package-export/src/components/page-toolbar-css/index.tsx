@@ -1821,6 +1821,7 @@ export function PageFeedbackToolbarCSS({
               <div className={styles.colorOptions}>
                 {COLOR_OPTIONS.map((color) => (
                   <div
+                    key={color.value}
                     onClick={() =>
                       setSettings((s) => ({
                         ...s,
@@ -1836,7 +1837,6 @@ export function PageFeedbackToolbarCSS({
                     className={`${styles.colorOptionRing} ${settings.annotationColor === color.value ? styles.selected : ""}`}
                   >
                     <div
-                      key={color.value}
                       className={`${styles.colorOption} ${settings.annotationColor === color.value ? styles.selected : ""}`}
                       style={{ backgroundColor: color.value }}
                       title={color.label}
