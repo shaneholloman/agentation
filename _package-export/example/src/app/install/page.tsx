@@ -145,8 +145,24 @@ function App() {
             }}
           >
             Annotations are stored locally and synced to the server when connected.
-            The component remembers which session it was connected to and rejoins automatically on refresh.
-            Only new annotations are uploaded to prevent duplicates; server state takes precedence when rejoining.
+          </p>
+
+          <ul style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.6)", marginTop: "0.75rem", paddingLeft: "1.25rem" }}>
+            <li style={{ marginBottom: "0.375rem" }}><strong>Local-first</strong> &mdash; Works offline, syncs when server is available</li>
+            <li style={{ marginBottom: "0.375rem" }}><strong>Session continuity</strong> &mdash; Rejoins the same session on page refresh</li>
+            <li style={{ marginBottom: "0.375rem" }}><strong>No duplicates</strong> &mdash; Only new annotations are uploaded; existing ones are skipped</li>
+            <li><strong>Server authority</strong> &mdash; Agent changes (resolve, dismiss) take precedence on rejoin</li>
+          </ul>
+
+          <p
+            style={{
+              fontSize: "0.8125rem",
+              color: "rgba(0,0,0,0.5)",
+              marginTop: "0.75rem",
+            }}
+          >
+            This means you can annotate freely, refresh the page, and the agent will see a continuous session
+            rather than fragmented duplicates.
           </p>
 
           <p style={{ marginTop: "1.5rem" }}>
