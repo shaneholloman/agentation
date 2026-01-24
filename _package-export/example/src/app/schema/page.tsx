@@ -9,7 +9,7 @@ export default function SchemaPage() {
       <article className="article">
         <header>
           <h1>
-            Agentation Format{" "}
+            Agentation Schema{" "}
             <span
               style={{
                 fontFamily: "var(--font-primary)",

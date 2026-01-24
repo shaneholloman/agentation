@@ -129,9 +129,8 @@ function CopyButton({ text }: { text: string }) {
       title="Copy to clipboard"
       style={{
         position: "absolute",
-        top: "50%",
-        right: "0.75rem",
-        transform: "translateY(-50%)",
+        top: "0.5rem",
+        right: "0.5rem",
         padding: "0.375rem",
         background: "transparent",
         border: "none",
