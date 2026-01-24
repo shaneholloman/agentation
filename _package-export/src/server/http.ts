@@ -11,6 +11,8 @@ import {
   updateAnnotation,
   getAnnotation,
   listSessions,
+  getPendingAnnotations,
+  addThreadMessage,
 } from "./store.js";
 import type { Annotation } from "../types.js";
 
@@ -174,6 +176,37 @@ const getAnnotationHandler: RouteHandler = async (_req, res, params) => {
   sendJson(res, 200, annotation);
 };
 
+/**
+ * GET /sessions/:id/pending - Get pending annotations for a session.
+ */
+const getPendingHandler: RouteHandler = async (_req, res, params) => {
+  const pending = getPendingAnnotations(params.id);
+  sendJson(res, 200, { count: pending.length, annotations: pending });
+};
+
+/**
+ * POST /annotations/:id/thread - Add a thread message.
+ */
+const addThreadHandler: RouteHandler = async (req, res, params) => {
+  try {
+    const body = await parseBody<{ role: "human" | "agent"; content: string }>(req);
+
+    if (!body.role || !body.content) {
+      return sendError(res, 400, "role and content are required");
+    }
+
+    const annotation = addThreadMessage(params.id, body.role, body.content);
+
+    if (!annotation) {
+      return sendError(res, 404, "Annotation not found");
+    }
+
+    sendJson(res, 201, annotation);
+  } catch (err) {
+    sendError(res, 400, (err as Error).message);
+  }
+};
+
 // -----------------------------------------------------------------------------
 // Router
 // -----------------------------------------------------------------------------
@@ -205,6 +238,12 @@ const routes: Route[] = [
     paramNames: ["id"],
   },
   {
+    method: "GET",
+    pattern: /^\/sessions\/([^/]+)\/pending$/,
+    handler: getPendingHandler,
+    paramNames: ["id"],
+  },
+  {
     method: "POST",
     pattern: /^\/sessions\/([^/]+)\/annotations$/,
     handler: addAnnotationHandler,
@@ -220,6 +259,12 @@ const routes: Route[] = [
     method: "GET",
     pattern: /^\/annotations\/([^/]+)$/,
     handler: getAnnotationHandler,
+    paramNames: ["id"],
+  },
+  {
+    method: "POST",
+    pattern: /^\/annotations\/([^/]+)\/thread$/,
+    handler: addThreadHandler,
     paramNames: ["id"],
   },
 ];

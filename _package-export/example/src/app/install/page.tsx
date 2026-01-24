@@ -325,8 +325,8 @@ function App() {
               marginTop: "0.5rem",
             }}
           >
-            Runs on port 4747 by default. Both HTTP and MCP use this port.
-            Use <code>--port 8080</code> to change it.
+            Runs on port 4747 by default. Use <code>--port 8080</code> to change it.
+            Use <code>--mcp-only</code> to skip the HTTP server (for when running HTTP separately).
           </p>
 
           <h3>2. Configure your agent</h3>
@@ -334,7 +334,7 @@ function App() {
             Add Agentation as an MCP server in your agent&apos;s config. Example for Claude Code:
           </p>
           <CodeBlock
-            code={`// ~/.claude/claude_code_config.json
+            code={`// In ~/.claude.json under projects.<your-project-path>
 {
   "mcpServers": {
     "agentation": {

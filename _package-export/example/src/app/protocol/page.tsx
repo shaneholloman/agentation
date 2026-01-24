@@ -298,7 +298,8 @@ export default function ProtocolPage() {
           <CodeBlock
             language="json"
             copyable
-            code={`{
+            code={`// In ~/.claude.json under projects.<your-project-path>
+{
   "mcpServers": {
     "agentation": {
       "command": "npx",
@@ -308,7 +309,8 @@ export default function ProtocolPage() {
 }`}
           />
           <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.75rem" }}>
-            Works with any MCP-compatible agent. The server runs on port 4747 by default.
+            Works with any MCP-compatible agent. The HTTP server runs on port 4747 by default.
+            Use <code>--mcp-only</code> if running the HTTP server separately.
           </p>
         </section>
 

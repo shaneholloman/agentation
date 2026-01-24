@@ -1,6 +1,9 @@
 /**
  * MCP server for Agentation.
  * Exposes tools for AI agents to interact with annotations.
+ *
+ * This server fetches data from the HTTP API (single source of truth)
+ * rather than maintaining its own store.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -10,14 +13,58 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import {
-  getPendingAnnotations,
-  getAnnotation,
-  updateAnnotationStatus,
-  addThreadMessage,
-  getSessionWithAnnotations,
-  listSessions,
-} from "./store.js";
+
+// -----------------------------------------------------------------------------
+// Configuration
+// -----------------------------------------------------------------------------
+
+let httpBaseUrl = "http://localhost:4747";
+
+/**
+ * Set the HTTP server URL that this MCP server will fetch from.
+ */
+export function setHttpBaseUrl(url: string): void {
+  httpBaseUrl = url;
+}
+
+// -----------------------------------------------------------------------------
+// HTTP Client
+// -----------------------------------------------------------------------------
+
+async function httpGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${httpBaseUrl}${path}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`HTTP ${res.status}: ${body}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function httpPatch<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${httpBaseUrl}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+async function httpPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${httpBaseUrl}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`HTTP ${res.status}: ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 // -----------------------------------------------------------------------------
 // Tool Schemas
@@ -168,6 +215,41 @@ const TOOLS = [
 ];
 
 // -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+type Session = {
+  id: string;
+  url: string;
+  status: string;
+  createdAt: string;
+};
+
+type Annotation = {
+  id: string;
+  sessionId: string;
+  comment: string;
+  element: string;
+  elementPath: string;
+  url?: string;
+  intent?: string;
+  severity?: string;
+  timestamp?: number;
+  nearbyText?: string;
+  reactComponents?: string;
+  status: string;
+};
+
+type SessionWithAnnotations = Session & {
+  annotations: Annotation[];
+};
+
+type PendingResponse = {
+  count: number;
+  annotations: Annotation[];
+};
+
+// -----------------------------------------------------------------------------
 // Tool Handlers
 // -----------------------------------------------------------------------------
 
@@ -192,7 +274,7 @@ function error(message: string): ToolResult {
 async function handleTool(name: string, args: unknown): Promise<ToolResult> {
   switch (name) {
     case "agentation_list_sessions": {
-      const sessions = listSessions();
+      const sessions = await httpGet<Session[]>("/sessions");
       return success({
         sessions: sessions.map((s) => ({
           id: s.id,
@@ -205,19 +287,23 @@ async function handleTool(name: string, args: unknown): Promise<ToolResult> {
 
     case "agentation_get_session": {
       const { sessionId } = GetSessionSchema.parse(args);
-      const session = getSessionWithAnnotations(sessionId);
-      if (!session) {
-        return error(`Session not found: ${sessionId}`);
+      try {
+        const session = await httpGet<SessionWithAnnotations>(`/sessions/${sessionId}`);
+        return success(session);
+      } catch (err) {
+        if ((err as Error).message.includes("404")) {
+          return error(`Session not found: ${sessionId}`);
+        }
+        throw err;
       }
-      return success(session);
     }
 
     case "agentation_get_pending": {
       const { sessionId } = GetPendingSchema.parse(args);
-      const pending = getPendingAnnotations(sessionId);
+      const response = await httpGet<PendingResponse>(`/sessions/${sessionId}/pending`);
       return success({
-        count: pending.length,
-        annotations: pending.map((a) => ({
+        count: response.count,
+        annotations: response.annotations.map((a) => ({
           id: a.id,
           comment: a.comment,
           element: a.element,
@@ -234,43 +320,73 @@ async function handleTool(name: string, args: unknown): Promise<ToolResult> {
 
     case "agentation_acknowledge": {
       const { annotationId } = AcknowledgeSchema.parse(args);
-      const annotation = updateAnnotationStatus(annotationId, "acknowledged");
-      if (!annotation) {
-        return error(`Annotation not found: ${annotationId}`);
+      try {
+        await httpPatch(`/annotations/${annotationId}`, { status: "acknowledged" });
+        return success({ acknowledged: true, annotationId });
+      } catch (err) {
+        if ((err as Error).message.includes("404")) {
+          return error(`Annotation not found: ${annotationId}`);
+        }
+        throw err;
       }
-      return success({ acknowledged: true, annotationId });
     }
 
     case "agentation_resolve": {
       const { annotationId, summary } = ResolveSchema.parse(args);
-      const annotation = updateAnnotationStatus(annotationId, "resolved", "agent");
-      if (!annotation) {
-        return error(`Annotation not found: ${annotationId}`);
+      try {
+        await httpPatch(`/annotations/${annotationId}`, {
+          status: "resolved",
+          resolvedBy: "agent",
+        });
+        if (summary) {
+          await httpPost(`/annotations/${annotationId}/thread`, {
+            role: "agent",
+            content: `Resolved: ${summary}`,
+          });
+        }
+        return success({ resolved: true, annotationId, summary });
+      } catch (err) {
+        if ((err as Error).message.includes("404")) {
+          return error(`Annotation not found: ${annotationId}`);
+        }
+        throw err;
       }
-      if (summary) {
-        addThreadMessage(annotationId, "agent", `Resolved: ${summary}`);
-      }
-      return success({ resolved: true, annotationId, summary });
     }
 
     case "agentation_dismiss": {
       const { annotationId, reason } = DismissSchema.parse(args);
-      const annotation = updateAnnotationStatus(annotationId, "dismissed", "agent");
-      if (!annotation) {
-        return error(`Annotation not found: ${annotationId}`);
+      try {
+        await httpPatch(`/annotations/${annotationId}`, {
+          status: "dismissed",
+          resolvedBy: "agent",
+        });
+        await httpPost(`/annotations/${annotationId}/thread`, {
+          role: "agent",
+          content: `Dismissed: ${reason}`,
+        });
+        return success({ dismissed: true, annotationId, reason });
+      } catch (err) {
+        if ((err as Error).message.includes("404")) {
+          return error(`Annotation not found: ${annotationId}`);
+        }
+        throw err;
       }
-      addThreadMessage(annotationId, "agent", `Dismissed: ${reason}`);
-      return success({ dismissed: true, annotationId, reason });
     }
 
     case "agentation_reply": {
       const { annotationId, message } = ReplySchema.parse(args);
-      const annotation = getAnnotation(annotationId);
-      if (!annotation) {
-        return error(`Annotation not found: ${annotationId}`);
+      try {
+        await httpPost(`/annotations/${annotationId}/thread`, {
+          role: "agent",
+          content: message,
+        });
+        return success({ replied: true, annotationId, message });
+      } catch (err) {
+        if ((err as Error).message.includes("404")) {
+          return error(`Annotation not found: ${annotationId}`);
+        }
+        throw err;
       }
-      addThreadMessage(annotationId, "agent", message);
-      return success({ replied: true, annotationId, message });
     }
 
     default:
@@ -284,8 +400,13 @@ async function handleTool(name: string, args: unknown): Promise<ToolResult> {
 
 /**
  * Create and start the MCP server on stdio.
+ * @param baseUrl - Optional HTTP server URL to fetch from (default: http://localhost:4747)
  */
-export async function startMcpServer(): Promise<void> {
+export async function startMcpServer(baseUrl?: string): Promise<void> {
+  if (baseUrl) {
+    setHttpBaseUrl(baseUrl);
+  }
+
   const server = new Server(
     {
       name: "agentation",
@@ -318,5 +439,5 @@ export async function startMcpServer(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
-  console.error("[MCP] Agentation MCP server started on stdio");
+  console.error(`[MCP] Agentation MCP server started on stdio (HTTP: ${httpBaseUrl})`);
 }
