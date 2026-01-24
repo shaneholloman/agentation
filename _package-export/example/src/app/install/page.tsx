@@ -304,6 +304,81 @@ function App() {
         </section>
 
         <section>
+          <h2>Agent Integration (Optional)</h2>
+          <p>
+            Connect Agentation to any AI coding agent that supports{" "}
+            <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener noreferrer">MCP</a>.
+            This enables real-time annotation syncing and bidirectional communication.
+          </p>
+
+          <h3>1. Start the server</h3>
+          <p>
+            The Agentation server runs two services: an HTTP server that receives
+            annotations from the React component, and an MCP server that exposes
+            tools for AI agents to read and act on feedback.
+          </p>
+          <CodeBlock code="npx agentation server" language="bash" copyable />
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "rgba(0,0,0,0.5)",
+              marginTop: "0.5rem",
+            }}
+          >
+            Runs on port 4747 by default. Both HTTP and MCP use this port.
+            Use <code>--port 8080</code> to change it.
+          </p>
+
+          <h3>2. Configure your agent</h3>
+          <p>
+            Add Agentation as an MCP server in your agent&apos;s config. Example for Claude Code:
+          </p>
+          <CodeBlock
+            code={`// ~/.claude/claude_code_config.json
+{
+  "mcpServers": {
+    "agentation": {
+      "command": "npx",
+      "args": ["agentation", "server"]
+    }
+  }
+}`}
+            language="json"
+          />
+
+          <h3>3. Connect the component</h3>
+          <p>
+            Point the React component to your server:
+          </p>
+          <CodeBlock
+            code={`<Agentation
+  endpoint="http://localhost:4747"
+  onSessionCreated={(session) => {
+    console.log("Session started:", session.id);
+  }}
+/>`}
+            language="tsx"
+          />
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "rgba(0,0,0,0.5)",
+              marginTop: "0.5rem",
+            }}
+          >
+            The component syncs annotations to the server automatically. Any MCP-compatible
+            agent can then read them via the exposed tools.
+          </p>
+
+          <p style={{ marginTop: "1.5rem" }}>
+            <strong>Other agents:</strong> Any tool that supports MCP can connect.
+            Point your agent&apos;s MCP config to <code>npx agentation server</code> and
+            it will have access to annotation tools like <code>get_annotations</code>,{" "}
+            <code>get_sessions</code>, and <code>resolve_annotation</code>.
+          </p>
+        </section>
+
+        <section>
           <h2>Requirements</h2>
           <ul>
             <li>
@@ -329,27 +404,45 @@ function App() {
             The <code>Agentation</code> component accepts optional props for
             programmatic integration:
           </p>
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "1rem" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.1)" }}>
-                <th style={{ textAlign: "left", padding: "0.5rem 1rem 0.5rem 0" }}>Prop</th>
-                <th style={{ textAlign: "left", padding: "0.5rem 1rem 0.5rem 0" }}>Type</th>
-                <th style={{ textAlign: "left", padding: "0.5rem 0" }}>Description</th>
-              </tr>
-            </thead>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem", marginTop: "1rem" }}>
             <tbody>
-              <tr style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                <td style={{ padding: "0.5rem 1rem 0.5rem 0" }}><code>onAnnotationAdd</code></td>
-                <td style={{ padding: "0.5rem 1rem 0.5rem 0" }}><code>(annotation: Annotation) =&gt; void</code></td>
-                <td style={{ padding: "0.5rem 0" }}>Callback fired when an annotation is added</td>
+              <tr>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", width: "35%" }}>
+                  <code>onAnnotationAdd</code>
+                </td>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                  Callback when annotation is added
+                </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.5rem 1rem 0.5rem 0" }}><code>copyToClipboard</code></td>
-                <td style={{ padding: "0.5rem 1rem 0.5rem 0" }}><code>boolean</code></td>
-                <td style={{ padding: "0.5rem 0" }}>Whether to copy to clipboard (default: <code>true</code>)</td>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                  <code>copyToClipboard</code>
+                </td>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                  Copy to clipboard on add (default: <code style={{ color: "rgba(0,0,0,0.7)" }}>true</code>)
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+                  <code>endpoint</code>
+                </td>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                  Server URL for agent sync
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0" }}>
+                  <code>onSessionCreated</code>
+                </td>
+                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)" }}>
+                  Callback when sync session starts
+                </td>
               </tr>
             </tbody>
           </table>
+          <p style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.5)", marginTop: "0.75rem" }}>
+            See the <a href="/api">API page</a> for the full list of callbacks.
+          </p>
         </section>
 
         <section>
@@ -390,13 +483,17 @@ function App() {
           <h2>Security notes</h2>
           <p>
             Agentation runs in your browser and reads DOM content to generate
-            feedback. It does <strong>not</strong> send data anywhere &mdash;
+            feedback. By default, it does <strong>not</strong> send data anywhere &mdash;
             everything stays local until you manually copy and paste.
           </p>
           <ul>
             <li>
-              <strong>No network requests</strong> &mdash; all processing is
-              client-side
+              <strong>No external requests</strong> &mdash; all processing is
+              client-side by default
+            </li>
+            <li>
+              <strong>Local server only</strong> &mdash; when using the <code>endpoint</code> prop,
+              data is sent to your local machine only (localhost)
             </li>
             <li>
               <strong>No data collection</strong> &mdash; nothing is tracked or

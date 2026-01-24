@@ -379,9 +379,11 @@ export function SideNav() {
   const links = [
     { href: "/", label: "Overview" },
     { href: "/install", label: "Install" },
+    { href: "/spec", label: "Schema", badge: "v1.0" },
     { href: "/features", label: "Features" },
     { href: "/output", label: "Output" },
-    { href: "/api", label: "API", badge: "New" },
+    { href: "/protocol", label: "MCP" },
+    { href: "/api", label: "API" },
     { href: "/changelog", label: "Changelog" },
     { href: "/faq", label: "FAQ" },
   ];

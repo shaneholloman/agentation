@@ -2,10 +2,14 @@
 // Example Page Styles (based on benji.org styling)
 // =============================================================================
 
+// Google Fonts
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600&display=swap');
+
 // CSS Variables
 :root {
   --font-primary: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-title: "IBM Plex Serif", Georgia, "Times New Roman", serif;
 
   --body-color: #111;
   --body-bg: #fdfdfc;
@@ -61,10 +65,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: 1.125rem;
-  font-weight: 580;
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 500;
   line-height: 1.4;
-  letter-spacing: -0.02rem;
+  letter-spacing: -0.01rem;
 }
 
 h2 {
@@ -383,6 +388,16 @@ button {
     white-space: pre-wrap;
     word-break: break-word;
     margin: 0.625rem 0;
+  }
+
+  // Inline links in article content
+  p a, li a, td a {
+    color: var(--hyperlink-color);
+    transition: color 0.15s ease;
+
+    &:hover {
+      color: #74b1fd;
+    }
   }
 
   .format-toggle {

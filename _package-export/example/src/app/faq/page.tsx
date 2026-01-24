@@ -43,6 +43,10 @@ const faqCategories: FAQCategory[] = [
         answer: "Agentation automatically identifies elements using class names, IDs, text content, and semantic structure. Buttons are named by their text, headings by content, images by <code>alt</code> text. This makes it easy for agents to <code>grep</code> for elements in your codebase."
       },
       {
+        question: "Does it detect React components?",
+        answer: "Yes. On React pages, Agentation traverses the fiber tree to find the component hierarchy for each annotated element. You'll see component names like <code>&lt;App&gt; &lt;Dashboard&gt; &lt;Button&gt;</code> in tooltips and output. This helps agents find the exact component file to edit. You can configure detection mode (Filtered, Smart, All, or Off) in settings."
+      },
+      {
         question: "Can I annotate text selections?",
         answer: "Yes. Select any text on the page to annotate specific content. The selected text is quoted in the output, making it easy for agents to search for exact strings in your code."
       },

@@ -7,8 +7,10 @@ import { usePathname } from "next/navigation";
 const links = [
   { href: "/", label: "Overview" },
   { href: "/install", label: "Install" },
+  { href: "/spec", label: "Schema" },
   { href: "/features", label: "Features" },
   { href: "/output", label: "Output" },
+  { href: "/protocol", label: "MCP" },
   { href: "/api", label: "API" },
   { href: "/changelog", label: "Changelog" },
   { href: "/faq", label: "FAQ" },

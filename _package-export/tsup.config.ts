@@ -82,19 +82,52 @@ export default {};
   };
 }
 
-export default defineConfig((options) => ({
-  entry: ["src/index.ts"],
-  format: ["cjs", "esm"],
-  dts: true,
-  splitting: false,
-  sourcemap: true,
-  clean: !options.watch, // Only clean on build, not during watch
-  external: ["react", "react-dom"],
-  esbuildPlugins: [scssModulesPlugin()],
-  define: {
-    __VERSION__: JSON.stringify(VERSION),
+export default defineConfig((options) => [
+  // React component
+  {
+    entry: ["src/index.ts"],
+    format: ["cjs", "esm"],
+    dts: true,
+    splitting: false,
+    sourcemap: true,
+    clean: !options.watch,
+    external: ["react", "react-dom"],
+    esbuildPlugins: [scssModulesPlugin()],
+    define: {
+      __VERSION__: JSON.stringify(VERSION),
+    },
+    banner: {
+      js: '"use client";',
+    },
   },
-  banner: {
-    js: '"use client";',
+  // Server (MCP + HTTP)
+  {
+    entry: ["src/server/index.ts"],
+    format: ["cjs", "esm"],
+    dts: true,
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    external: ["@modelcontextprotocol/sdk", "zod"],
+    outDir: "dist/server",
+    define: {
+      __VERSION__: JSON.stringify(VERSION),
+    },
   },
-}));
+  // CLI
+  {
+    entry: ["src/cli.ts"],
+    format: ["cjs"],
+    dts: false,
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    external: ["@modelcontextprotocol/sdk", "zod"],
+    define: {
+      __VERSION__: JSON.stringify(VERSION),
+    },
+    banner: {
+      js: "#!/usr/bin/env node",
+    },
+  },
+]);

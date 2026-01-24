@@ -38,6 +38,7 @@ export function ToolbarProvider() {
       demoAnnotations={demoAnnotations}
       demoDelay={1500}
       enableDemoMode
+      endpoint="http://localhost:4748"
     />
   );
 }

@@ -51,9 +51,51 @@ import {
   saveAnnotations,
   getStorageKey,
 } from "../../utils/storage";
+import {
+  createSession,
+  getSession,
+  syncAnnotation,
+  deleteAnnotation as deleteAnnotationFromServer,
+} from "../../utils/sync";
+import { getReactComponentName } from "../../utils/react-detection";
 
 import type { Annotation } from "../../types";
 import styles from "./styles.module.scss";
+
+/**
+ * Composes element identification with React component detection.
+ * This is the boundary where we combine framework-agnostic element ID
+ * with React-specific component name detection.
+ */
+function identifyElementWithReact(
+  element: HTMLElement,
+  reactMode: ReactComponentMode = "filtered",
+): {
+  /** Combined name for display (React path + element) */
+  name: string;
+  /** Raw element name without React path */
+  elementName: string;
+  /** DOM path */
+  path: string;
+  /** React component path (e.g., '<SideNav> <LinkComponent>') */
+  reactComponents: string | null;
+} {
+  const { name: elementName, path } = identifyElement(element);
+
+  // If React detection is off, just return element info
+  if (reactMode === "off") {
+    return { name: elementName, elementName, path, reactComponents: null };
+  }
+
+  const reactInfo = getReactComponentName(element, { mode: reactMode });
+
+  return {
+    name: reactInfo.path ? `${reactInfo.path} ${elementName}` : elementName,
+    elementName,
+    path,
+    reactComponents: reactInfo.path,
+  };
+}
 
 // Module-level flag to prevent re-animating on SPA page navigation
 let hasPlayedEntranceAnimation = false;
@@ -64,17 +106,22 @@ let hasPlayedEntranceAnimation = false;
 
 type HoverInfo = {
   element: string;
+  elementName: string;
   elementPath: string;
   rect: DOMRect | null;
+  reactComponents?: string | null;
 };
 
 type OutputDetailLevel = "compact" | "standard" | "detailed" | "forensic";
+type ReactComponentMode = "smart" | "filtered" | "all" | "off";
 
 type ToolbarSettings = {
   outputDetail: OutputDetailLevel;
   autoClearAfterCopy: boolean;
   annotationColor: string;
   blockInteractions: boolean;
+  reactComponentMode: ReactComponentMode;
+  sendViaMcp: boolean;
 };
 
 const DEFAULT_SETTINGS: ToolbarSettings = {
@@ -82,7 +129,28 @@ const DEFAULT_SETTINGS: ToolbarSettings = {
   autoClearAfterCopy: false,
   annotationColor: "#3c82f7",
   blockInteractions: false,
+  reactComponentMode: "filtered",
+  sendViaMcp: true,
 };
+
+const REACT_MODE_OPTIONS: {
+  value: ReactComponentMode;
+  label: string;
+  tooltip: string;
+}[] = [
+  {
+    value: "filtered",
+    label: "Filtered",
+    tooltip: "Shows user components, hides framework internals",
+  },
+  {
+    value: "smart",
+    label: "Smart",
+    tooltip: "Only components matching CSS class names",
+  },
+  { value: "all", label: "All", tooltip: "Every component including internals" },
+  { value: "off", label: "Off", tooltip: "Disable React detection" },
+];
 
 const OUTPUT_DETAIL_OPTIONS: { value: OutputDetailLevel; label: string }[] = [
   { value: "compact", label: "Compact" },
@@ -140,6 +208,7 @@ function generateOutput(
   annotations: Annotation[],
   pathname: string,
   detailLevel: OutputDetailLevel = "standard",
+  reactMode: ReactComponentMode = "filtered",
 ): string {
   if (annotations.length === 0) return "";
 
@@ -204,11 +273,19 @@ function generateOutput(
       if (a.nearbyElements) {
         output += `**Nearby Elements:** ${a.nearbyElements}\n`;
       }
+      if (a.reactComponents && reactMode !== "off") {
+        output += `**React:** ${a.reactComponents}\n`;
+      }
       output += `**Feedback:** ${a.comment}\n\n`;
     } else {
       // Standard and detailed modes
       output += `### ${i + 1}. ${a.element}\n`;
       output += `**Location:** ${a.elementPath}\n`;
+
+      // React components in both standard and detailed (if not turned off)
+      if (a.reactComponents && reactMode !== "off") {
+        output += `**React:** ${a.reactComponents}\n`;
+      }
 
       if (detailLevel === "detailed") {
         if (a.cssClasses) {
@@ -261,6 +338,12 @@ export type PageFeedbackToolbarCSSProps = {
   onCopy?: (markdown: string) => void;
   /** Whether to copy to clipboard when the copy button is clicked. Defaults to true. */
   copyToClipboard?: boolean;
+  /** Server URL for sync (e.g., "http://localhost:4747"). If not provided, uses localStorage only. */
+  endpoint?: string;
+  /** Pre-existing session ID to join. If not provided with endpoint, creates a new session. */
+  sessionId?: string;
+  /** Called when a new session is created (only when endpoint is provided without sessionId). */
+  onSessionCreated?: (sessionId: string) => void;
 };
 
 /** Alias for PageFeedbackToolbarCSSProps */
@@ -280,6 +363,9 @@ export function PageFeedbackToolbarCSS({
   onAnnotationsClear,
   onCopy,
   copyToClipboard = true,
+  endpoint,
+  sessionId: initialSessionId,
+  onSessionCreated,
 }: PageFeedbackToolbarCSSProps = {}) {
   const [isActive, setIsActive] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -307,6 +393,7 @@ export function PageFeedbackToolbarCSS({
     computedStyles?: string;
     computedStylesObj?: Record<string, string>;
     nearbyElements?: string;
+    reactComponents?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [cleared, setCleared] = useState(false);
@@ -336,6 +423,15 @@ export function PageFeedbackToolbarCSS({
   const [settings, setSettings] = useState<ToolbarSettings>(DEFAULT_SETTINGS);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showEntranceAnimation, setShowEntranceAnimation] = useState(false);
+
+  // Server sync state
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(
+    initialSessionId ?? null
+  );
+  const sessionInitializedRef = useRef(false);
+  const [connectionStatus, setConnectionStatus] = useState<"disconnected" | "connecting" | "connected">(
+    endpoint ? "connecting" : "disconnected"
+  );
 
   // Draggable toolbar state
   const [toolbarPosition, setToolbarPosition] = useState<{
@@ -474,6 +570,66 @@ export function PageFeedbackToolbarCSS({
       );
     }
   }, [isDarkMode, mounted]);
+
+  // Initialize server session (when endpoint is provided)
+  useEffect(() => {
+    if (!endpoint || !mounted || sessionInitializedRef.current) return;
+    sessionInitializedRef.current = true;
+    setConnectionStatus("connecting");
+
+    const initSession = async () => {
+      try {
+        if (initialSessionId) {
+          // Join existing session and load its annotations
+          const session = await getSession(endpoint, initialSessionId);
+          setCurrentSessionId(session.id);
+          setConnectionStatus("connected");
+          // Merge server annotations with local (server wins on conflict)
+          setAnnotations((prev) => {
+            const serverIds = new Set(session.annotations.map((a) => a.id));
+            const localOnly = prev.filter((a) => !serverIds.has(a.id));
+            return [...session.annotations, ...localOnly];
+          });
+        } else {
+          // Create new session
+          const url = typeof window !== "undefined" ? window.location.href : "/";
+          const session = await createSession(endpoint, url);
+          setCurrentSessionId(session.id);
+          setConnectionStatus("connected");
+          onSessionCreated?.(session.id);
+        }
+      } catch (error) {
+        // Network error - continue in local-only mode
+        setConnectionStatus("disconnected");
+        console.warn("[Agentation] Failed to initialize session, using local storage:", error);
+      }
+    };
+
+    initSession();
+  }, [endpoint, initialSessionId, mounted, onSessionCreated]);
+
+  // Periodic health check for server connection
+  useEffect(() => {
+    if (!endpoint || !mounted) return;
+
+    const checkHealth = async () => {
+      try {
+        const response = await fetch(`${endpoint}/health`);
+        if (response.ok) {
+          setConnectionStatus("connected");
+        } else {
+          setConnectionStatus("disconnected");
+        }
+      } catch {
+        setConnectionStatus("disconnected");
+      }
+    };
+
+    // Check immediately, then every 10 seconds
+    checkHealth();
+    const interval = setInterval(checkHealth, 10000);
+    return () => clearInterval(interval);
+  }, [endpoint, mounted]);
 
   // Demo annotations
   useEffect(() => {
@@ -683,16 +839,19 @@ export function PageFeedbackToolbarCSS({
         return;
       }
 
-      const { name, path } = identifyElement(elementUnder);
+      const { name, elementName, path, reactComponents } = identifyElementWithReact(
+        elementUnder,
+        settings.reactComponentMode,
+      );
       const rect = elementUnder.getBoundingClientRect();
 
-      setHoverInfo({ element: name, elementPath: path, rect });
+      setHoverInfo({ element: name, elementName, elementPath: path, rect, reactComponents });
       setHoverPosition({ x: e.clientX, y: e.clientY });
     };
 
     document.addEventListener("mousemove", handleMouseMove);
     return () => document.removeEventListener("mousemove", handleMouseMove);
-  }, [isActive, pendingAnnotation]);
+  }, [isActive, pendingAnnotation, settings.reactComponentMode]);
 
   // Handle click
   useEffect(() => {
@@ -747,7 +906,10 @@ export function PageFeedbackToolbarCSS({
       ) as HTMLElement;
       if (!elementUnder) return;
 
-      const { name, path } = identifyElement(elementUnder);
+      const { name, path, reactComponents } = identifyElementWithReact(
+        elementUnder,
+        settings.reactComponentMode,
+      );
       const rect = elementUnder.getBoundingClientRect();
       const x = (e.clientX / window.innerWidth) * 100;
 
@@ -785,6 +947,7 @@ export function PageFeedbackToolbarCSS({
         computedStyles: computedStylesStr,
         computedStylesObj,
         nearbyElements: getNearbyElements(elementUnder),
+        reactComponents: reactComponents ?? undefined,
       });
       setHoverInfo(null);
     };
@@ -797,6 +960,7 @@ export function PageFeedbackToolbarCSS({
     pendingAnnotation,
     editingAnnotation,
     settings.blockInteractions,
+    settings.reactComponentMode,
   ]);
 
   // Multi-select drag - mousedown
@@ -1249,6 +1413,15 @@ export function PageFeedbackToolbarCSS({
         accessibility: pendingAnnotation.accessibility,
         computedStyles: pendingAnnotation.computedStyles,
         nearbyElements: pendingAnnotation.nearbyElements,
+        reactComponents: pendingAnnotation.reactComponents,
+        // Protocol fields for server sync
+        ...(endpoint && currentSessionId
+          ? {
+              sessionId: currentSessionId,
+              url: typeof window !== "undefined" ? window.location.href : undefined,
+              status: "pending" as const,
+            }
+          : {}),
       };
 
       setAnnotations((prev) => [...prev, newAnnotation]);
@@ -1273,8 +1446,15 @@ export function PageFeedbackToolbarCSS({
       }, 150);
 
       window.getSelection()?.removeAllRanges();
+
+      // Sync to server (non-blocking)
+      if (endpoint && currentSessionId) {
+        syncAnnotation(endpoint, currentSessionId, newAnnotation).catch((error) => {
+          console.warn("[Agentation] Failed to sync annotation:", error);
+        });
+      }
     },
-    [pendingAnnotation, onAnnotationAdd],
+    [pendingAnnotation, onAnnotationAdd, endpoint, currentSessionId],
   );
 
   // Cancel annotation with exit animation
@@ -1305,6 +1485,13 @@ export function PageFeedbackToolbarCSS({
         onAnnotationDelete?.(deletedAnnotation);
       }
 
+      // Sync delete to server (non-blocking)
+      if (endpoint) {
+        deleteAnnotationFromServer(endpoint, id).catch((error) => {
+          console.warn("[Agentation] Failed to delete annotation from server:", error);
+        });
+      }
+
       // Wait for exit animation then remove
       setTimeout(() => {
         setAnnotations((prev) => prev.filter((a) => a.id !== id));
@@ -1322,7 +1509,7 @@ export function PageFeedbackToolbarCSS({
         }
       }, 150);
     },
-    [annotations, editingAnnotation, onAnnotationDelete],
+[annotations, editingAnnotation, onAnnotationDelete, endpoint],
   );
 
   // Start editing an annotation (right-click)
@@ -1390,7 +1577,7 @@ export function PageFeedbackToolbarCSS({
 
   // Copy output
   const copyOutput = useCallback(async () => {
-    const output = generateOutput(annotations, pathname, settings.outputDetail);
+    const output = generateOutput(annotations, pathname, settings.outputDetail, settings.reactComponentMode);
     if (!output) return;
 
     if (copyToClipboard) {
@@ -1414,6 +1601,7 @@ export function PageFeedbackToolbarCSS({
     annotations,
     pathname,
     settings.outputDetail,
+    settings.reactComponentMode,
     settings.autoClearAfterCopy,
     clearAll,
     copyToClipboard,
@@ -1686,14 +1874,12 @@ export function PageFeedbackToolbarCSS({
           role={!isActive ? "button" : undefined}
           tabIndex={!isActive ? 0 : -1}
           title={!isActive ? "Start feedback mode" : undefined}
-          style={
-            isDraggingToolbar
-              ? {
-                  transform: `scale(1.05) rotate(${dragRotation}deg)`,
-                  cursor: "grabbing",
-                }
-              : undefined
-          }
+          style={{
+            ...(isDraggingToolbar && {
+              transform: `scale(1.05) rotate(${dragRotation}deg)`,
+              cursor: "grabbing",
+            }),
+          }}
         >
           {/* Toggle content - visible when collapsed */}
           <div
@@ -1918,6 +2104,57 @@ export function PageFeedbackToolbarCSS({
                   </span>
                 </button>
               </div>
+
+              <div className={styles.settingsRow}>
+                <div
+                  className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
+                >
+                  React Components
+                  <span
+                    className={styles.helpIcon}
+                    data-tooltip={
+                      REACT_MODE_OPTIONS.find(
+                        (opt) => opt.value === settings.reactComponentMode,
+                      )?.tooltip || "Show React component names in annotations"
+                    }
+                  >
+                    <IconHelp size={20} />
+                  </span>
+                </div>
+                <button
+                  className={`${styles.cycleButton} ${!isDarkMode ? styles.light : ""}`}
+                  onClick={() => {
+                    const currentIndex = REACT_MODE_OPTIONS.findIndex(
+                      (opt) => opt.value === settings.reactComponentMode,
+                    );
+                    const nextIndex =
+                      (currentIndex + 1) % REACT_MODE_OPTIONS.length;
+                    setSettings((s) => ({
+                      ...s,
+                      reactComponentMode: REACT_MODE_OPTIONS[nextIndex].value,
+                    }));
+                  }}
+                >
+                  <span
+                    key={settings.reactComponentMode}
+                    className={styles.cycleButtonText}
+                  >
+                    {
+                      REACT_MODE_OPTIONS.find(
+                        (opt) => opt.value === settings.reactComponentMode,
+                      )?.label
+                    }
+                  </span>
+                  <span className={styles.cycleDots}>
+                    {REACT_MODE_OPTIONS.map((option) => (
+                      <span
+                        key={option.value}
+                        className={`${styles.cycleDot} ${!isDarkMode ? styles.light : ""} ${settings.reactComponentMode === option.value ? styles.active : ""}`}
+                      />
+                    ))}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className={styles.settingsSection}>
@@ -1951,6 +2188,35 @@ export function PageFeedbackToolbarCSS({
                     />
                   </div>
                 ))}
+              </div>
+            </div>
+
+            <div className={styles.settingsSection}>
+              <div className={styles.settingsRow}>
+                <span
+                  className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
+                >
+                  Send via MCP
+                  <span
+                    className={styles.helpIcon}
+                    data-tooltip="Send annotations to Claude Code via MCP server"
+                  >
+                    <IconHelp size={20} />
+                  </span>
+                </span>
+                <label className={styles.toggleSwitch}>
+                  <input
+                    type="checkbox"
+                    checked={settings.sendViaMcp}
+                    onChange={(e) =>
+                      setSettings((s) => ({
+                        ...s,
+                        sendViaMcp: e.target.checked,
+                      }))
+                    }
+                  />
+                  <span className={styles.toggleSlider} />
+                </label>
               </div>
             </div>
 
@@ -2308,10 +2574,13 @@ export function PageFeedbackToolbarCSS({
                   8,
                   Math.min(hoverPosition.x, window.innerWidth - 100),
                 ),
-                top: Math.max(hoverPosition.y - 32, 8),
+                top: Math.max(hoverPosition.y - (hoverInfo.reactComponents ? 48 : 32), 8),
               }}
             >
-              {hoverInfo.element}
+              {hoverInfo.reactComponents && (
+                <div className={styles.hoverReactPath}>{hoverInfo.reactComponents}</div>
+              )}
+              <div className={styles.hoverElementName}>{hoverInfo.elementName}</div>
             </div>
           )}
 

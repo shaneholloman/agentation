@@ -64,11 +64,13 @@ const outputExamples: Record<OutputFormat, string> = {
 ### 1. button.submit-btn
 **Location:** \`.form-container > .actions > button.submit-btn\`
 **Classes:** \`submit-btn primary\`
+**React:** \`<App> <Dashboard> <FormActions> <SubmitButton>\`
 **Position:** 450, 320 (120x40)
 **Feedback:** Button text should say "Save" not "Submit"
 
 ### 2. span.nav-label
 **Location:** \`.sidebar > nav > .nav-item > span\`
+**React:** \`<App> <Sidebar> <NavItem>\`
 **Selected:** "Settigns"
 **Feedback:** Typo - should be "Settings"`,
 
@@ -83,6 +85,7 @@ const outputExamples: Record<OutputFormat, string> = {
 
 **Selector:** \`.form-container > .actions > button.submit-btn\`
 **Classes:** \`.submit-btn\`, \`.primary\`
+**React:** \`<App> <Dashboard> <FormActions> <SubmitButton>\`
 **Bounding box:** x:450, y:320, 120x40px
 **Nearby text:** "Cancel Save Changes"
 
@@ -94,6 +97,7 @@ const outputExamples: Record<OutputFormat, string> = {
 
 **Selector:** \`.sidebar > nav > .nav-item > span\`
 **Classes:** \`.nav-label\`
+**React:** \`<App> <Sidebar> <NavItem>\`
 **Selected text:** "Settigns"
 **Nearby text:** "Dashboard Settigns Profile"
 
@@ -101,7 +105,7 @@ const outputExamples: Record<OutputFormat, string> = {
 
 ---
 
-**Search tips:** Use the class names or selectors above to find these elements. Try \`grep -r "className.*submit-btn"\` or search for the nearby text.`,
+**Search tips:** Use the class names, React components, or selectors above to find these elements. Try \`grep -r "SubmitButton"\` or \`grep -r "className.*submit-btn"\`.`,
 
   compact: `## Feedback: /dashboard
 
@@ -125,6 +129,7 @@ const outputExamples: Record<OutputFormat, string> = {
 ### 1. button.submit-btn
 
 **Full DOM Path:** \`body > div.app > main.dashboard > div.form-container > div.actions > button.submit-btn\`
+**React:** \`<App> <Dashboard> <FormActions> <SubmitButton>\`
 
 **CSS Classes:** \`submit-btn, primary\`
 **Position:**
@@ -141,6 +146,7 @@ const outputExamples: Record<OutputFormat, string> = {
 ### 2. span.nav-label
 
 **Full DOM Path:** \`body > div.app > aside.sidebar > nav > div.nav-item:nth-child(2) > span.nav-label\`
+**React:** \`<App> <Sidebar> <NavItem>\`
 
 **CSS Classes:** \`nav-label\`
 **Selected text:** "Settigns"

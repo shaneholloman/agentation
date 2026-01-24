@@ -1,7 +1,7 @@
 "use client";
 
 import { Footer } from "../Footer";
-import { FeaturesDemo, SettingsDemo, SmartIdentificationDemo, MarkerKeyDemo, ComputedStylesDemo } from "../components/FeaturesDemo";
+import { FeaturesDemo, SettingsDemo, SmartIdentificationDemo, MarkerKeyDemo, ComputedStylesDemo, ReactDetectionDemo } from "../components/FeaturesDemo";
 
 export default function FeaturesPage() {
   return (
@@ -58,6 +58,24 @@ export default function FeaturesPage() {
           Expand the collapsible section to see relevant properties like colors, fonts, and spacing.
         </p>
         <ComputedStylesDemo />
+      </section>
+
+      <section>
+        <h2>React component detection</h2>
+        <p>
+          Agentation detects React component hierarchies automatically.
+          When you hover over an element, you&rsquo;ll see the full component tree, making it easy for AI agents to locate the exact component in your codebase.
+        </p>
+        <ReactDetectionDemo />
+        <p style={{ marginTop: '1rem' }}>
+          Configure detection mode in the settings panel:
+        </p>
+        <ul>
+          <li><strong>Filtered</strong> (default) &mdash; Shows user components, hides framework internals like providers, boundaries, and routers</li>
+          <li><strong>Smart</strong> &mdash; Only shows components that correlate with CSS class names on the element</li>
+          <li><strong>All</strong> &mdash; Shows every component in the tree, including framework internals</li>
+          <li><strong>Off</strong> &mdash; Disables React detection entirely</li>
+        </ul>
       </section>
 
       <section>
