@@ -308,6 +308,37 @@ $green: #34c759;
     }
 }
 
+// Delete button wrapper
+.deleteWrapper {
+    margin-right: auto;
+}
+
+.deleteButton {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.4);
+    transition:
+        background-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.1s ease;
+
+    &:hover {
+        background: rgba(255, 59, 48, 0.25);
+        color: #ff3b30;
+    }
+
+    &:active {
+        transform: scale(0.92);
+    }
+}
+
 // =============================================================================
 // Light Mode
 // =============================================================================
@@ -373,6 +404,15 @@ $green: #34c759;
         &:hover {
             background: rgba(0, 0, 0, 0.06);
             color: rgba(0, 0, 0, 0.75);
+        }
+    }
+
+    .deleteButton {
+        color: rgba(0, 0, 0, 0.4);
+
+        &:hover {
+            background: rgba(255, 59, 48, 0.15);
+            color: #ff3b30;
         }
     }
 }

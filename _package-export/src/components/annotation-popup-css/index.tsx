@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react";
 import styles from "./styles.module.scss";
+import { IconTrash } from "../icons";
 
 // =============================================================================
 // Types
@@ -24,6 +25,8 @@ export interface AnnotationPopupCSSProps {
   onSubmit: (text: string) => void;
   /** Called when popup is cancelled/dismissed */
   onCancel: () => void;
+  /** Called when delete button is clicked (only shown if provided) */
+  onDelete?: () => void;
   /** Position styles (left, top) */
   style?: React.CSSProperties;
   /** Custom color for submit button and textarea focus (hex) */
@@ -66,6 +69,7 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
       submitLabel = "Add",
       onSubmit,
       onCancel,
+      onDelete,
       style,
       accentColor = "#3c82f7",
       isExiting = false,
@@ -250,6 +254,13 @@ export const AnnotationPopupCSS = forwardRef<AnnotationPopupCSSHandle, Annotatio
         />
 
         <div className={styles.actions}>
+          {onDelete && (
+            <div className={styles.deleteWrapper}>
+              <button className={styles.deleteButton} onClick={onDelete} type="button">
+                <IconTrash size={22} />
+              </button>
+            </div>
+          )}
           <button className={styles.cancel} onClick={handleCancel}>
             Cancel
           </button>

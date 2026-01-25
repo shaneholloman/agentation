@@ -35,6 +35,7 @@ import {
   IconSun,
   IconMoon,
   IconXmarkLarge,
+  IconEdit,
 } from "../icons";
 import {
   identifyElement,
@@ -2206,7 +2207,7 @@ export function PageFeedbackToolbarCSS({
                 >
                   <IconSendAnimated size={24} sent={sent || settings.agentMode === "claude-code"} />
                   {hasAnnotations && !sent && !sendFailed && settings.agentMode !== "claude-code" && (
-                    <span className={styles.buttonBadge}>{annotations.length}</span>
+                    <span className={`${styles.buttonBadge} ${!isDarkMode ? styles.light : ""}`}>{annotations.length}</span>
                   )}
                 </button>
                 <span className={`${styles.buttonTooltip} ${sent || sendFailed ? styles.tooltipVisible : ""}`}>
@@ -2368,7 +2369,7 @@ export function PageFeedbackToolbarCSS({
                 </button>
               </div>
 
-              <div className={styles.settingsRow}>
+              <div className={styles.settingsRow} style={{ marginTop: 4 }}>
                 <div
                   className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
                 >
@@ -2418,8 +2419,87 @@ export function PageFeedbackToolbarCSS({
                   </span>
                 </button>
               </div>
+            </div>
 
+            <div className={styles.settingsSection}>
+              <div
+                className={`${styles.settingsLabel} ${styles.settingsLabelMarker} ${!isDarkMode ? styles.light : ""}`}
+              >
+                Marker Colour
+              </div>
+              <div className={styles.colorOptions}>
+                {COLOR_OPTIONS.map((color) => (
+                  <div
+                    key={color.value}
+                    onClick={() =>
+                      setSettings((s) => ({
+                        ...s,
+                        annotationColor: color.value,
+                      }))
+                    }
+                    style={{
+                      borderColor:
+                        settings.annotationColor === color.value
+                          ? color.value
+                          : "transparent",
+                    }}
+                    className={`${styles.colorOptionRing} ${settings.annotationColor === color.value ? styles.selected : ""}`}
+                  >
+                    <div
+                      className={`${styles.colorOption} ${settings.annotationColor === color.value ? styles.selected : ""}`}
+                      style={{ backgroundColor: color.value }}
+                      title={color.label}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.settingsSection}>
               <div className={styles.settingsRow}>
+                <span
+                  className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
+                >
+                  Sync Status
+                  {endpoint && (
+                    <span
+                      className={styles.helpIcon}
+                      data-tooltip={
+                        connectionStatus === "connected"
+                          ? `Connected${currentSessionId ? ` (${currentSessionId.slice(0, 8)}...)` : ""}`
+                          : connectionStatus === "connecting"
+                            ? "Connecting..."
+                            : "Start the server with: npx agentation server"
+                      }
+                    >
+                      <IconHelp size={20} />
+                    </span>
+                  )}
+                </span>
+                {endpoint ? (
+                  <div
+                    className={`${styles.mcpStatusDot} ${styles[connectionStatus]}`}
+                    title={
+                      connectionStatus === "connected"
+                        ? "Connected"
+                        : connectionStatus === "connecting"
+                          ? "Connecting..."
+                          : "Disconnected"
+                    }
+                  />
+                ) : (
+                  <a
+                    href="https://agentation.dev/install#mcp-server"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.settingsLink}
+                    style={{ color: "rgba(0,0,0,0.4)", fontSize: "0.75rem" }}
+                  >
+                    Learn more →
+                  </a>
+                )}
+              </div>
+              <div className={styles.settingsRow} style={{ marginTop: 4 }}>
                 <div
                   className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
                 >
@@ -2468,86 +2548,6 @@ export function PageFeedbackToolbarCSS({
                     ))}
                   </span>
                 </button>
-              </div>
-            </div>
-
-            <div className={styles.settingsSection}>
-              <div
-                className={`${styles.settingsLabel} ${styles.settingsLabelMarker} ${!isDarkMode ? styles.light : ""}`}
-              >
-                Marker Colour
-              </div>
-              <div className={styles.colorOptions}>
-                {COLOR_OPTIONS.map((color) => (
-                  <div
-                    key={color.value}
-                    onClick={() =>
-                      setSettings((s) => ({
-                        ...s,
-                        annotationColor: color.value,
-                      }))
-                    }
-                    style={{
-                      borderColor:
-                        settings.annotationColor === color.value
-                          ? color.value
-                          : "transparent",
-                    }}
-                    className={`${styles.colorOptionRing} ${settings.annotationColor === color.value ? styles.selected : ""}`}
-                  >
-                    <div
-                      className={`${styles.colorOption} ${settings.annotationColor === color.value ? styles.selected : ""}`}
-                      style={{ backgroundColor: color.value }}
-                      title={color.label}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className={styles.settingsSection}>
-              <div className={styles.settingsRow}>
-                <span
-                  className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
-                >
-                  Agent Sync
-                  {endpoint && (
-                    <span
-                      className={styles.helpIcon}
-                      data-tooltip={
-                        connectionStatus === "connected"
-                          ? `Connected${currentSessionId ? ` (${currentSessionId.slice(0, 8)}...)` : ""}`
-                          : connectionStatus === "connecting"
-                            ? "Connecting..."
-                            : "Start the server with: npx agentation server"
-                      }
-                    >
-                      <IconHelp size={20} />
-                    </span>
-                  )}
-                </span>
-                {endpoint ? (
-                  <div
-                    className={`${styles.mcpStatusDot} ${styles[connectionStatus]}`}
-                    title={
-                      connectionStatus === "connected"
-                        ? "Connected"
-                        : connectionStatus === "connecting"
-                          ? "Connecting..."
-                          : "Disconnected"
-                    }
-                  />
-                ) : (
-                  <a
-                    href="https://agentation.dev/install#mcp-server"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.settingsLink}
-                    style={{ color: "rgba(0,0,0,0.4)", fontSize: "0.75rem" }}
-                  >
-                    Learn more →
-                  </a>
-                )}
               </div>
             </div>
 
@@ -2624,7 +2624,7 @@ export function PageFeedbackToolbarCSS({
               const isHovered =
                 !markersExiting && hoveredMarkerId === annotation.id;
               const isDeleting = deletingMarkerId === annotation.id;
-              const showDeleteState = isHovered || isDeleting;
+              const showDeleteState = (isHovered || isDeleting) && !editingAnnotation;
               const isMulti = annotation.isMultiSelect;
               const markerColor = isMulti
                 ? "#34C759"
@@ -2644,12 +2644,12 @@ export function PageFeedbackToolbarCSS({
               return (
                 <div
                   key={annotation.id}
-                  className={`${styles.marker} ${showDeleteState ? styles.hovered : ""} ${isMulti ? styles.multiSelect : ""} ${animClass}`}
+                  className={`${styles.marker} ${isMulti ? styles.multiSelect : ""} ${animClass}`}
                   data-annotation-marker
                   style={{
                     left: `${annotation.x}%`,
                     top: annotation.y,
-                    backgroundColor: showDeleteState ? undefined : markerColor,
+                    backgroundColor: markerColor,
                     animationDelay: markersExiting
                       ? `${(visibleAnnotations.length - 1 - index) * 20}ms`
                       : `${index * 20}ms`,
@@ -2662,16 +2662,11 @@ export function PageFeedbackToolbarCSS({
                   onMouseLeave={() => setHoveredMarkerId(null)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!markersExiting) deleteAnnotation(annotation.id);
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                     if (!markersExiting) startEditAnnotation(annotation);
                   }}
                 >
                   {showDeleteState ? (
-                    <IconXmark size={isMulti ? 18 : 16} />
+                    <IconEdit size={16} />
                   ) : (
                     <span
                       className={
@@ -2737,7 +2732,7 @@ export function PageFeedbackToolbarCSS({
               const isHovered =
                 !markersExiting && hoveredMarkerId === annotation.id;
               const isDeleting = deletingMarkerId === annotation.id;
-              const showDeleteState = isHovered || isDeleting;
+              const showDeleteState = (isHovered || isDeleting) && !editingAnnotation;
               const isMulti = annotation.isMultiSelect;
               const markerColor = isMulti
                 ? "#34C759"
@@ -2757,12 +2752,12 @@ export function PageFeedbackToolbarCSS({
               return (
                 <div
                   key={annotation.id}
-                  className={`${styles.marker} ${styles.fixed} ${showDeleteState ? styles.hovered : ""} ${isMulti ? styles.multiSelect : ""} ${animClass}`}
+                  className={`${styles.marker} ${styles.fixed} ${isMulti ? styles.multiSelect : ""} ${animClass}`}
                   data-annotation-marker
                   style={{
                     left: `${annotation.x}%`,
                     top: annotation.y,
-                    backgroundColor: showDeleteState ? undefined : markerColor,
+                    backgroundColor: markerColor,
                     animationDelay: markersExiting
                       ? `${(fixedAnnotations.length - 1 - index) * 20}ms`
                       : `${index * 20}ms`,
@@ -2775,16 +2770,11 @@ export function PageFeedbackToolbarCSS({
                   onMouseLeave={() => setHoveredMarkerId(null)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!markersExiting) deleteAnnotation(annotation.id);
-                  }}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                     if (!markersExiting) startEditAnnotation(annotation);
                   }}
                 >
                   {showDeleteState ? (
-                    <IconClose size={isMulti ? 12 : 10} />
+                    <IconEdit size={16} />
                   ) : (
                     <span
                       className={
@@ -3022,6 +3012,7 @@ export function PageFeedbackToolbarCSS({
                 submitLabel="Save"
                 onSubmit={updateAnnotation}
                 onCancel={cancelEditAnnotation}
+                onDelete={() => deleteAnnotation(editingAnnotation.id)}
                 isExiting={editExiting}
                 lightMode={!isDarkMode}
                 accentColor={
