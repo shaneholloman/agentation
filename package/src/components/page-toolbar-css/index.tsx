@@ -510,16 +510,9 @@ export function PageFeedbackToolbarCSS({
       window.location.hostname === "0.0.0.0" ||
       window.location.hostname.endsWith(".local"));
 
-  // DEBUG: temporary toggles for testing (localhost only)
-  const [debugMcpOverride, setDebugMcpOverride] = useState<boolean | null>(null);
-  const [debugReactOff, setDebugReactOff] = useState(false);
-
-  // Effective localhost check (can be overridden by debug toggle to simulate prod)
-  const effectiveIsLocalhost = isLocalhost && !debugReactOff;
-
   // Effective React mode - derived from outputDetail when enabled
   const effectiveReactMode: ReactComponentMode =
-    effectiveIsLocalhost && settings.reactEnabled
+    isLocalhost && settings.reactEnabled
       ? OUTPUT_TO_REACT_MODE[settings.outputDetail]
       : "off";
 
@@ -532,10 +525,6 @@ export function PageFeedbackToolbarCSS({
     endpoint ? "connecting" : "disconnected"
   );
   const [availableSessions, setAvailableSessions] = useState<Session[]>([]);
-
-  const effectiveConnectionStatus = debugMcpOverride === null
-    ? connectionStatus
-    : debugMcpOverride ? "connected" : "disconnected";
 
   // Draggable toolbar state
   const [toolbarPosition, setToolbarPosition] = useState<{
@@ -2221,7 +2210,7 @@ export function PageFeedbackToolbarCSS({
       >
         {/* Morphing container */}
         <div
-          className={`${styles.toolbarContainer} ${!isDarkMode ? styles.light : ""} ${isActive ? styles.expanded : styles.collapsed} ${showEntranceAnimation ? styles.entrance : ""} ${isDraggingToolbar ? styles.dragging : ""} ${effectiveConnectionStatus === "connected" ? styles.serverConnected : ""}`}
+          className={`${styles.toolbarContainer} ${!isDarkMode ? styles.light : ""} ${isActive ? styles.expanded : styles.collapsed} ${showEntranceAnimation ? styles.entrance : ""} ${isDraggingToolbar ? styles.dragging : ""} ${connectionStatus === "connected" ? styles.serverConnected : ""}`}
           data-agent-mode={settings.agentMode}
           onClick={
             !isActive
@@ -2326,7 +2315,7 @@ export function PageFeedbackToolbarCSS({
             </div>
 
             {/* Sync button - auto-synced state for Claude Code, clickable for Manual/Custom/onSubmit */}
-            <div className={`${styles.buttonWrapper} ${styles.sendButtonWrapper} ${effectiveConnectionStatus === "connected" || onSubmit ? styles.sendButtonVisible : ""}`}>
+            <div className={`${styles.buttonWrapper} ${styles.sendButtonWrapper} ${connectionStatus === "connected" || onSubmit ? styles.sendButtonVisible : ""}`}>
               <button
                 className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
                 onClick={(e) => {
@@ -2339,7 +2328,7 @@ export function PageFeedbackToolbarCSS({
                 data-active={sent || settings.agentMode === "claude-code"}
                 data-auto-sync={settings.agentMode === "claude-code"}
                 data-failed={sendFailed}
-                tabIndex={effectiveConnectionStatus === "connected" || onSubmit ? 0 : -1}
+                tabIndex={connectionStatus === "connected" || onSubmit ? 0 : -1}
               >
                 <IconSendAnimated size={24} sent={sent || settings.agentMode === "claude-code"} />
                 {hasAnnotations && !sent && !sendFailed && settings.agentMode !== "claude-code" && (
@@ -2505,7 +2494,7 @@ export function PageFeedbackToolbarCSS({
               </div>
 
               <div
-                className={`${styles.settingsRow} ${!effectiveIsLocalhost ? styles.settingsRowDisabled : ""}`}
+                className={`${styles.settingsRow} ${!isLocalhost ? styles.settingsRowDisabled : ""}`}
                 style={{ marginTop: 4 }}
               >
                 <div
@@ -2515,7 +2504,7 @@ export function PageFeedbackToolbarCSS({
                   <span
                     className={styles.helpIcon}
                     data-tooltip={
-                      !effectiveIsLocalhost
+                      !isLocalhost
                         ? "Only available on localhost"
                         : "Include React component names in annotations"
                     }
@@ -2523,11 +2512,11 @@ export function PageFeedbackToolbarCSS({
                     <IconHelp size={20} />
                   </span>
                 </div>
-                <label className={`${styles.toggleSwitch} ${!effectiveIsLocalhost ? styles.disabled : ""}`}>
+                <label className={`${styles.toggleSwitch} ${!isLocalhost ? styles.disabled : ""}`}>
                   <input
                     type="checkbox"
-                    checked={effectiveIsLocalhost && settings.reactEnabled}
-                    disabled={!effectiveIsLocalhost}
+                    checked={isLocalhost && settings.reactEnabled}
+                    disabled={!isLocalhost}
                     onChange={() => setSettings((s) => ({ ...s, reactEnabled: !s.reactEnabled }))}
                   />
                   <span className={styles.toggleSlider} />
@@ -3344,98 +3333,6 @@ export function PageFeedbackToolbarCSS({
         </div>
       )}
 
-      {/* DEBUG: Temporary toggles for testing (localhost only) */}
-      {isLocalhost && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 20,
-            left: 20,
-            zIndex: 2147483646,
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            background: "rgba(0,0,0,0.9)",
-            padding: "12px 14px",
-            borderRadius: 10,
-            fontFamily: "system-ui, sans-serif",
-            fontSize: 12,
-            color: "#fff",
-            width: 180,
-          }}
-        >
-          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.5 }}>
-            Debug Panel
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 500 }}>MCP Connection</span>
-              <div style={{ display: "flex", gap: 4 }}>
-                <button
-                  onClick={() => setDebugMcpOverride(debugMcpOverride === true ? null : true)}
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 4,
-                    border: "none",
-                    background: debugMcpOverride === true ? "#22c55e" : "#333",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontSize: 11,
-                  }}
-                >
-                  On
-                </button>
-                <button
-                  onClick={() => setDebugMcpOverride(debugMcpOverride === false ? null : false)}
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: 4,
-                    border: "none",
-                    background: debugMcpOverride === false ? "#ef4444" : "#333",
-                    color: "#fff",
-                    cursor: "pointer",
-                    fontSize: 11,
-                  }}
-                >
-                  Off
-                </button>
-              </div>
-            </div>
-            <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.3 }}>
-              Simulates server connected/disconnected. Affects toolbar width &amp; send button.
-              {debugMcpOverride !== null && <span style={{ color: "#f59e0b" }}> (overriding: {connectionStatus})</span>}
-            </div>
-          </div>
-
-          <div style={{ height: 1, background: "rgba(255,255,255,0.1)" }} />
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 500 }}>React Detection</span>
-              <button
-                onClick={() => setDebugReactOff(!debugReactOff)}
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: 4,
-                  border: "none",
-                  background: debugReactOff ? "#ef4444" : "#22c55e",
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontSize: 11,
-                }}
-              >
-                {debugReactOff ? "Off" : "On"}
-              </button>
-            </div>
-            <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.3 }}>
-              {debugReactOff
-                ? "Simulating production — React component names hidden, settings toggle disabled."
-                : "Localhost mode — React component detection enabled."}
-            </div>
-          </div>
-        </div>
-      )}
     </>,
     document.body,
   );
