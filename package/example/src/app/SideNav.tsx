@@ -382,6 +382,21 @@ export function SideNav() {
     { href: "/", label: "Overview" },
     { href: "/install", label: "Install" },
     {
+      href: "/features",
+      label: "Features",
+      items: [
+        { id: 'annotation-modes', text: 'Annotation Modes' },
+        { id: 'toolbar-controls', text: 'Toolbar Controls' },
+        { id: 'marker-types', text: 'Marker Types' },
+        { id: 'smart-identification', text: 'Smart Identification' },
+        { id: 'computed-styles', text: 'Computed Styles' },
+        { id: 'react-detection', text: 'React Detection' },
+        { id: 'keyboard-shortcuts', text: 'Keyboard Shortcuts' },
+        { id: 'settings', text: 'Settings' },
+      ],
+    },
+    { href: "/output", label: "Output" },
+    {
       href: "/schema",
       label: "Schema",
       badge: "v1.0",
@@ -400,21 +415,6 @@ export function SideNav() {
         { id: 'versioning', text: 'Versioning' },
       ],
     },
-    {
-      href: "/features",
-      label: "Features",
-      items: [
-        { id: 'annotation-modes', text: 'Annotation Modes' },
-        { id: 'toolbar-controls', text: 'Toolbar Controls' },
-        { id: 'marker-types', text: 'Marker Types' },
-        { id: 'smart-identification', text: 'Smart Identification' },
-        { id: 'computed-styles', text: 'Computed Styles' },
-        { id: 'react-detection', text: 'React Detection' },
-        { id: 'keyboard-shortcuts', text: 'Keyboard Shortcuts' },
-        { id: 'settings', text: 'Settings' },
-      ],
-    },
-    { href: "/output", label: "Output" },
     { section: "Tools" },
     {
       href: "/mcp",
