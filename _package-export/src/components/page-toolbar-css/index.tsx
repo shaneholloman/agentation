@@ -512,8 +512,15 @@ export function PageFeedbackToolbarCSS({
       window.location.hostname === "0.0.0.0" ||
       window.location.hostname.endsWith(".local"));
 
-  // Effective React mode - forced to "off" when not on localhost
-  const effectiveReactMode: ReactComponentMode = isLocalhost
+  // DEBUG: temporary toggles for testing (localhost only)
+  const [debugMcpOverride, setDebugMcpOverride] = useState<boolean | null>(null);
+  const [debugReactOff, setDebugReactOff] = useState(false);
+
+  // Effective localhost check (can be overridden by debug toggle to simulate prod)
+  const effectiveIsLocalhost = isLocalhost && !debugReactOff;
+
+  // Effective React mode - forced to "off" when not on localhost (or debug override)
+  const effectiveReactMode: ReactComponentMode = effectiveIsLocalhost
     ? settings.reactComponentMode
     : "off";
 
@@ -527,8 +534,6 @@ export function PageFeedbackToolbarCSS({
   );
   const [availableSessions, setAvailableSessions] = useState<Session[]>([]);
 
-  // DEBUG: temporary toggle for testing width animation
-  const [debugMcpOverride, setDebugMcpOverride] = useState<boolean | null>(null);
   const effectiveConnectionStatus = debugMcpOverride === null
     ? connectionStatus
     : debugMcpOverride ? "connected" : "disconnected";
@@ -2468,7 +2473,7 @@ export function PageFeedbackToolbarCSS({
                   <span
                     className={styles.helpIcon}
                     data-tooltip={
-                      !isLocalhost
+                      !effectiveIsLocalhost
                         ? "Only available on localhost"
                         : REACT_MODE_OPTIONS.find(
                             (opt) => opt.value === settings.reactComponentMode,
@@ -2481,9 +2486,9 @@ export function PageFeedbackToolbarCSS({
                 </div>
                 <button
                   className={`${styles.cycleButton} ${!isDarkMode ? styles.light : ""}`}
-                  disabled={!isLocalhost}
+                  disabled={!effectiveIsLocalhost}
                   onClick={() => {
-                    if (!isLocalhost) return;
+                    if (!effectiveIsLocalhost) return;
                     const currentIndex = REACT_MODE_OPTIONS.findIndex(
                       (opt) => opt.value === settings.reactComponentMode,
                     );
@@ -2496,10 +2501,10 @@ export function PageFeedbackToolbarCSS({
                   }}
                 >
                   <span
-                    key={isLocalhost ? settings.reactComponentMode : "off"}
+                    key={effectiveIsLocalhost ? settings.reactComponentMode : "off"}
                     className={styles.cycleButtonText}
                   >
-                    {isLocalhost
+                    {effectiveIsLocalhost
                       ? REACT_MODE_OPTIONS.find(
                           (opt) => opt.value === settings.reactComponentMode,
                         )?.label
@@ -2509,7 +2514,7 @@ export function PageFeedbackToolbarCSS({
                     {REACT_MODE_OPTIONS.map((option) => (
                       <span
                         key={option.value}
-                        className={`${styles.cycleDot} ${!isDarkMode ? styles.light : ""} ${(isLocalhost ? settings.reactComponentMode : "off") === option.value ? styles.active : ""}`}
+                        className={`${styles.cycleDot} ${!isDarkMode ? styles.light : ""} ${(effectiveIsLocalhost ? settings.reactComponentMode : "off") === option.value ? styles.active : ""}`}
                       />
                     ))}
                   </span>
@@ -3302,7 +3307,7 @@ export function PageFeedbackToolbarCSS({
         </div>
       )}
 
-      {/* DEBUG: Temporary toggle for testing MCP width animation (localhost only) */}
+      {/* DEBUG: Temporary toggles for testing (localhost only) */}
       {isLocalhost && (
         <div
           style={{
@@ -3311,46 +3316,87 @@ export function PageFeedbackToolbarCSS({
             left: 20,
             zIndex: 2147483646,
             display: "flex",
-            gap: 8,
-            alignItems: "center",
-            background: "rgba(0,0,0,0.8)",
-            padding: "8px 12px",
-            borderRadius: 8,
+            flexDirection: "column",
+            gap: 12,
+            background: "rgba(0,0,0,0.9)",
+            padding: "12px 14px",
+            borderRadius: 10,
             fontFamily: "system-ui, sans-serif",
             fontSize: 12,
             color: "#fff",
+            width: 180,
           }}
         >
-          <span>MCP:</span>
-          <button
-            onClick={() => setDebugMcpOverride(debugMcpOverride === true ? null : true)}
-            style={{
-              padding: "4px 8px",
-              borderRadius: 4,
-              border: "none",
-              background: debugMcpOverride === true ? "#22c55e" : "#333",
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            On
-          </button>
-          <button
-            onClick={() => setDebugMcpOverride(debugMcpOverride === false ? null : false)}
-            style={{
-              padding: "4px 8px",
-              borderRadius: 4,
-              border: "none",
-              background: debugMcpOverride === false ? "#ef4444" : "#333",
-              color: "#fff",
-              cursor: "pointer",
-            }}
-          >
-            Off
-          </button>
-          <span style={{ opacity: 0.5, marginLeft: 4 }}>
-            {debugMcpOverride === null ? `(actual: ${connectionStatus})` : "(override)"}
-          </span>
+          <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", opacity: 0.5 }}>
+            Debug Panel
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 500 }}>MCP Connection</span>
+              <div style={{ display: "flex", gap: 4 }}>
+                <button
+                  onClick={() => setDebugMcpOverride(debugMcpOverride === true ? null : true)}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    border: "none",
+                    background: debugMcpOverride === true ? "#22c55e" : "#333",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontSize: 11,
+                  }}
+                >
+                  On
+                </button>
+                <button
+                  onClick={() => setDebugMcpOverride(debugMcpOverride === false ? null : false)}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 4,
+                    border: "none",
+                    background: debugMcpOverride === false ? "#ef4444" : "#333",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontSize: 11,
+                  }}
+                >
+                  Off
+                </button>
+              </div>
+            </div>
+            <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.3 }}>
+              Simulates server connected/disconnected. Affects toolbar width &amp; send button.
+              {debugMcpOverride !== null && <span style={{ color: "#f59e0b" }}> (overriding: {connectionStatus})</span>}
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: "rgba(255,255,255,0.1)" }} />
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 500 }}>React Detection</span>
+              <button
+                onClick={() => setDebugReactOff(!debugReactOff)}
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: 4,
+                  border: "none",
+                  background: debugReactOff ? "#ef4444" : "#22c55e",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: 11,
+                }}
+              >
+                {debugReactOff ? "Off" : "On"}
+              </button>
+            </div>
+            <div style={{ fontSize: 10, opacity: 0.5, lineHeight: 1.3 }}>
+              {debugReactOff
+                ? "Simulating production — React component names hidden, settings toggle disabled."
+                : "Localhost mode — React component detection enabled."}
+            </div>
+          </div>
         </div>
       )}
     </>,

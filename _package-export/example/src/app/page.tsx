@@ -94,6 +94,9 @@ export default function AgentationDocs() {
             <li>Click <svg style={{ display: 'inline-block', verticalAlign: '-0.45em', width: '1.5em', height: '1.5em', margin: '0 -0.1em' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M4.75 11.25C4.75 10.4216 5.42157 9.75 6.25 9.75H12.75C13.5784 9.75 14.25 10.4216 14.25 11.25V17.75C14.25 18.5784 13.5784 19.25 12.75 19.25H6.25C5.42157 19.25 4.75 18.5784 4.75 17.75V11.25Z" /><path d="M17.25 14.25H17.75C18.5784 14.25 19.25 13.5784 19.25 12.75V6.25C19.25 5.42157 18.5784 4.75 17.75 4.75H11.25C10.4216 4.75 9.75 5.42157 9.75 6.25V6.75" /></svg> to copy formatted markdown</li>
             <li>Paste into your agent</li>
           </ol>
+          <p style={{ fontSize: '0.8125rem', color: 'rgba(0,0,0,0.55)', marginTop: '1rem' }}>
+            With <Link href="/mcp">MCP</Link>, you can skip the copy-paste entirely. Just add annotations and talk to your agent &mdash; it sees your feedback in real-time and can act on it directly.
+          </p>
         </section>
 
         <section>
