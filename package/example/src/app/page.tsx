@@ -75,6 +75,11 @@ export default function AgentationDocs() {
   return (
     <>
       <article className="article">
+        <Link href="/blog/introducing-agentation-2" className="announcement-banner">
+          <span className="pulse-dot" />
+          New in 2.0: Your agent sees your annotations directly. No more copy-paste.
+          <span style={{ color: '#4a9eff', marginLeft: '0.5rem' }}>Learn more &rarr;</span>
+        </Link>
         <header style={{ position: 'relative' }}>
           <InstallSnippet />
           <h1 style={{ fontSize: '2rem', lineHeight: 1.15, marginBottom: '0.5rem' }}><span className="sketchy-underline">Point at bugs.</span><br />Let AI <span className="pen-underline">fix them.</span></h1>
