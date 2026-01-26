@@ -31,4 +31,4 @@ Website changes (`package/example/`) only affect agentation.dev.
 
 ## Annotations
 
-Whenever the user brings up annotations/feedback/notes, fetch all the pending annotations before doing anything else. And infer whether I am referencing any annotations.
+Whenever the user brings up annotations, fetch all the pending annotations before doing anything else. And infer whether I am referencing any annotations.
