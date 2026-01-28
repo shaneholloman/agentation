@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { Footer } from "./Footer";
 import { HeroDemo } from "./components/HeroDemo";
 
@@ -47,6 +48,118 @@ const IconCopyAnimated = ({ size = 24, copied = false }: { size?: number; copied
   </svg>
 );
 
+// Shadow DOM Modal Component
+function ShadowModal({ isOpen, isExiting, onClose }: { isOpen: boolean; isExiting: boolean; onClose: () => void }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const shadowRootRef = useRef<ShadowRoot | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    if (!hostRef.current || shadowRootRef.current) return;
+    shadowRootRef.current = hostRef.current.attachShadow({ mode: 'open' });
+    setMounted(true);
+  }, []);
+
+  if (!isOpen) return <div ref={hostRef} style={{ display: 'none' }} />;
+
+  const modalStyles = `
+    @keyframes modalOverlayEnter {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes modalOverlayExit {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    @keyframes modalEnter {
+      from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+      to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    @keyframes modalExit {
+      from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      to { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      animation: modalOverlayEnter 0.2s ease forwards;
+    }
+    .modal-overlay.exiting { animation: modalOverlayExit 0.15s ease forwards; }
+    .modal-content {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      max-width: 400px;
+      background: #1a1a1a;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      z-index: 10000;
+      padding: 1.5rem;
+      animation: modalEnter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .modal-content.exiting { animation: modalExit 0.15s ease forwards; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .modal-title { font-size: 1rem; font-weight: 600; color: white; margin: 0; }
+    .modal-close {
+      width: 28px; height: 28px; border-radius: 50%; background: transparent; border: none;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: rgba(255, 255, 255, 0.5); transition: background 0.15s ease, color 0.15s ease;
+    }
+    .modal-close:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
+    .modal-body { color: rgba(255, 255, 255, 0.7); font-size: 0.875rem; line-height: 1.5; margin-bottom: 1.25rem; }
+    .modal-body p + p { margin-top: 0.75rem; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; }
+    .modal-btn {
+      padding: 0.5rem 1rem; font-size: 0.8125rem; font-weight: 500; border-radius: 8px;
+      border: none; cursor: pointer; transition: background 0.15s ease, color 0.15s ease;
+    }
+    .modal-btn-secondary { background: transparent; color: rgba(255, 255, 255, 0.5); }
+    .modal-btn-secondary:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.8); }
+    .modal-btn-primary { background: #3c82f7; color: white; }
+    .modal-btn-primary:hover { background: #2d6fe0; }
+  `;
+
+  const modalContent = (
+    <>
+      <style>{modalStyles}</style>
+      <div className={`modal-overlay${isExiting ? ' exiting' : ''}`} onClick={onClose} />
+      <div className={`modal-content${isExiting ? ' exiting' : ''}`}>
+        <div className="modal-header">
+          <h3 className="modal-title">Shadow DOM Modal</h3>
+          <button className="modal-close" onClick={onClose}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="modal-body">
+          <p>This modal is rendered inside a shadow DOM, isolating its styles from the page.</p>
+          <p>Agentation can detect and annotate elements inside shadow DOM boundaries.</p>
+        </div>
+        <div className="modal-footer">
+          <button className="modal-btn modal-btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="modal-btn modal-btn-primary" onClick={onClose}>Got it</button>
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div ref={hostRef} style={{ position: 'fixed', inset: 0, zIndex: 9998, pointerEvents: 'none' }}>
+      {mounted && shadowRootRef.current && createPortal(
+        <div style={{ pointerEvents: 'auto' }}>{modalContent}</div>,
+        shadowRootRef.current as unknown as Element
+      )}
+    </div>
+  );
+}
+
 function InstallSnippet() {
   const [copied, setCopied] = useState(false);
   const command = "npm install agentation";
@@ -71,6 +184,36 @@ function InstallSnippet() {
 
 export default function AgentationDocs() {
   const [inputValue, setInputValue] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalExiting, setModalExiting] = useState(false);
+  const [shadowModalOpen, setShadowModalOpen] = useState(false);
+  const [shadowModalExiting, setShadowModalExiting] = useState(false);
+
+  const openModal = () => {
+    setModalOpen(true);
+    setModalExiting(false);
+  };
+
+  const openShadowModal = () => {
+    setShadowModalOpen(true);
+    setShadowModalExiting(false);
+  };
+
+  const closeShadowModal = () => {
+    setShadowModalExiting(true);
+    setTimeout(() => {
+      setShadowModalOpen(false);
+      setShadowModalExiting(false);
+    }, 150);
+  };
+
+  const closeModal = () => {
+    setModalExiting(true);
+    setTimeout(() => {
+      setModalOpen(false);
+      setModalExiting(false);
+    }, 150);
+  };
 
   return (
     <>
@@ -136,12 +279,10 @@ export default function AgentationDocs() {
 
           <div className="demo-elements">
             <div className="button-group">
-              <button className="demo-button" onClick={() => alert("Primary clicked!")}>
-                Primary Button
-              </button>
-              <button className="demo-button secondary" onClick={() => alert("Secondary clicked!")}>
-                Secondary Button
-              </button>
+              <button className="demo-button" onClick={() => alert("Primary clicked!")}>Primary</button>
+              <button className="demo-button secondary" onClick={() => alert("Secondary clicked!")}>Secondary</button>
+              <button className="demo-button" onClick={openModal} style={{ background: '#3c82f7' }}>Modal</button>
+              <button className="demo-button" onClick={openShadowModal} style={{ background: '#7c3aed' }}>Shadow Modal</button>
             </div>
 
             <input
@@ -211,6 +352,164 @@ export default function AgentationDocs() {
       </article>
 
       <Footer />
+
+      {/* Test Modal */}
+      {modalOpen && (
+        <>
+          <style>{`
+            @keyframes modalOverlayEnter {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes modalOverlayExit {
+              from { opacity: 1; }
+              to { opacity: 0; }
+            }
+            @keyframes modalEnter {
+              from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.95);
+              }
+              to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+              }
+            }
+            @keyframes modalExit {
+              from {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+              }
+              to {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.95);
+              }
+            }
+            .modal-overlay {
+              position: fixed;
+              inset: 0;
+              background: rgba(0, 0, 0, 0.5);
+              backdrop-filter: blur(4px);
+              z-index: 9999;
+              animation: modalOverlayEnter 0.2s ease forwards;
+            }
+            .modal-overlay.exiting {
+              animation: modalOverlayExit 0.15s ease forwards;
+            }
+            .modal-content {
+              position: fixed;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              width: 90%;
+              max-width: 400px;
+              background: #1a1a1a;
+              border-radius: 16px;
+              box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
+              z-index: 10000;
+              padding: 1.5rem;
+              animation: modalEnter 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+              font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }
+            .modal-content.exiting {
+              animation: modalExit 0.15s ease forwards;
+            }
+            .modal-header {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 1rem;
+            }
+            .modal-title {
+              font-size: 1rem;
+              font-weight: 600;
+              color: white;
+              margin: 0;
+            }
+            .modal-close {
+              width: 28px;
+              height: 28px;
+              border-radius: 50%;
+              background: transparent;
+              border: none;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              color: rgba(255, 255, 255, 0.5);
+              transition: background 0.15s ease, color 0.15s ease;
+            }
+            .modal-close:hover {
+              background: rgba(255, 255, 255, 0.1);
+              color: rgba(255, 255, 255, 0.8);
+            }
+            .modal-body {
+              color: rgba(255, 255, 255, 0.7);
+              font-size: 0.875rem;
+              line-height: 1.5;
+              margin-bottom: 1.25rem;
+            }
+            .modal-footer {
+              display: flex;
+              justify-content: flex-end;
+              gap: 0.5rem;
+            }
+            .modal-btn {
+              padding: 0.5rem 1rem;
+              font-size: 0.8125rem;
+              font-weight: 500;
+              border-radius: 8px;
+              border: none;
+              cursor: pointer;
+              transition: background 0.15s ease, color 0.15s ease;
+            }
+            .modal-btn-secondary {
+              background: transparent;
+              color: rgba(255, 255, 255, 0.5);
+            }
+            .modal-btn-secondary:hover {
+              background: rgba(255, 255, 255, 0.1);
+              color: rgba(255, 255, 255, 0.8);
+            }
+            .modal-btn-primary {
+              background: #3c82f7;
+              color: white;
+            }
+            .modal-btn-primary:hover {
+              background: #2d6fe0;
+            }
+          `}</style>
+          <div
+            className={`modal-overlay${modalExiting ? ' exiting' : ''}`}
+            onClick={closeModal}
+          />
+          <div className={`modal-content${modalExiting ? ' exiting' : ''}`}>
+            <div className="modal-header">
+              <h3 className="modal-title">Example Modal</h3>
+              <button className="modal-close" onClick={closeModal}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>This is an example modal dialog. You can use it to display important information, confirmations, or form inputs.</p>
+              <p style={{ marginTop: '0.75rem' }}>Click outside the modal or use the buttons below to close it.</p>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn modal-btn-secondary" onClick={closeModal}>
+                Cancel
+              </button>
+              <button className="modal-btn modal-btn-primary" onClick={closeModal}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Shadow DOM Modal */}
+      <ShadowModal isOpen={shadowModalOpen} isExiting={shadowModalExiting} onClose={closeShadowModal} />
     </>
   );
 }
