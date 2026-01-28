@@ -21,6 +21,12 @@ export type Annotation = {
   isMultiSelect?: boolean; // true if created via drag selection
   isFixed?: boolean; // true if element has fixed/sticky positioning (marker stays fixed)
   reactComponents?: string; // React component hierarchy (e.g. "<App> <Dashboard> <Button>")
+  elementBoundingBoxes?: Array<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }>; // Individual bounding boxes for multi-select hover highlighting
 
   // Protocol fields (added when syncing to server)
   sessionId?: string;

@@ -479,6 +479,16 @@ export function PageFeedbackToolbarCSS({
     computedStylesObj?: Record<string, string>;
     nearbyElements?: string;
     reactComponents?: string;
+    elementBoundingBoxes?: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }>;
+    // Element references for cmd+shift+click multi-select (for live position queries)
+    multiSelectElements?: HTMLElement[];
+    // Element reference for single-select (for live position queries)
+    targetElement?: HTMLElement;
   } | null>(null);
   const [copied, setCopied] = useState(false);
   const [sendState, setSendState] = useState<
@@ -487,11 +497,21 @@ export function PageFeedbackToolbarCSS({
   const [cleared, setCleared] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null);
+  const [hoveredTargetElement, setHoveredTargetElement] =
+    useState<HTMLElement | null>(null);
+  const [hoveredTargetElements, setHoveredTargetElements] = useState<
+    HTMLElement[]
+  >([]); // For cmd+shift+click multi-select hover
   const [deletingMarkerId, setDeletingMarkerId] = useState<string | null>(null);
   const [renumberFrom, setRenumberFrom] = useState<number | null>(null);
   const [editingAnnotation, setEditingAnnotation] = useState<Annotation | null>(
     null,
   );
+  const [editingTargetElement, setEditingTargetElement] =
+    useState<HTMLElement | null>(null);
+  const [editingTargetElements, setEditingTargetElements] = useState<
+    HTMLElement[]
+  >([]); // For cmd+shift+click multi-select
   const [scrollY, setScrollY] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -503,6 +523,18 @@ export function PageFeedbackToolbarCSS({
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [tooltipsHidden, setTooltipsHidden] = useState(false);
+
+  // Cmd+shift+click multi-select state
+  const [pendingMultiSelectElements, setPendingMultiSelectElements] = useState<
+    Array<{
+      element: HTMLElement;
+      rect: DOMRect;
+      name: string;
+      path: string;
+      reactComponents?: string;
+    }>
+  >([]);
+  const modifiersHeldRef = useRef({ cmd: false, shift: false });
 
   // Hide tooltips after button click until mouse leaves
   const hideTooltipsUntilMouseLeave = () => {
@@ -1178,13 +1210,121 @@ export function PageFeedbackToolbarCSS({
     }
   }, [isFrozen, freezeAnimations, unfreezeAnimations]);
 
+  // Create pending annotation from cmd+shift+click multi-select
+  const createMultiSelectPendingAnnotation = useCallback(() => {
+    if (pendingMultiSelectElements.length === 0) return;
+
+    const firstItem = pendingMultiSelectElements[0];
+    const firstEl = firstItem.element;
+    const isMulti = pendingMultiSelectElements.length > 1;
+
+    // Get fresh rects for all elements
+    const freshRects = pendingMultiSelectElements.map((item) =>
+      item.element.getBoundingClientRect(),
+    );
+
+    if (!isMulti) {
+      // Single element - treat as regular annotation (not multi-select)
+      const rect = freshRects[0];
+      const isFixed = isElementFixed(firstEl);
+
+      setPendingAnnotation({
+        x: (rect.left / window.innerWidth) * 100,
+        y: isFixed ? rect.top : rect.top + window.scrollY,
+        clientY: rect.top,
+        element: firstItem.name,
+        elementPath: firstItem.path,
+        boundingBox: {
+          x: rect.left,
+          y: isFixed ? rect.top : rect.top + window.scrollY,
+          width: rect.width,
+          height: rect.height,
+        },
+        isFixed,
+        fullPath: getFullElementPath(firstEl),
+        accessibility: getAccessibilityInfo(firstEl),
+        computedStyles: getForensicComputedStyles(firstEl),
+        computedStylesObj: getDetailedComputedStyles(firstEl),
+        nearbyElements: getNearbyElements(firstEl),
+        cssClasses: getElementClasses(firstEl),
+        nearbyText: getNearbyText(firstEl),
+        reactComponents: firstItem.reactComponents,
+      });
+    } else {
+      // Multiple elements - multi-select annotation
+      const bounds = {
+        left: Math.min(...freshRects.map((r) => r.left)),
+        top: Math.min(...freshRects.map((r) => r.top)),
+        right: Math.max(...freshRects.map((r) => r.right)),
+        bottom: Math.max(...freshRects.map((r) => r.bottom)),
+      };
+
+      const names = pendingMultiSelectElements
+        .slice(0, 5)
+        .map((item) => item.name)
+        .join(", ");
+      const suffix =
+        pendingMultiSelectElements.length > 5
+          ? ` +${pendingMultiSelectElements.length - 5} more`
+          : "";
+
+      const elementBoundingBoxes = freshRects.map((rect) => ({
+        x: rect.left,
+        y: rect.top + window.scrollY,
+        width: rect.width,
+        height: rect.height,
+      }));
+
+      // Position marker near the last selected element (most recent click)
+      const lastItem = pendingMultiSelectElements[pendingMultiSelectElements.length - 1];
+      const lastEl = lastItem.element;
+      const lastRect = freshRects[freshRects.length - 1];
+      const lastCenterX = lastRect.left + lastRect.width / 2;
+      const lastCenterY = lastRect.top + lastRect.height / 2;
+      const lastIsFixed = isElementFixed(lastEl);
+
+      setPendingAnnotation({
+        x: (lastCenterX / window.innerWidth) * 100,
+        y: lastIsFixed ? lastCenterY : lastCenterY + window.scrollY,
+        clientY: lastCenterY,
+        element: `${pendingMultiSelectElements.length} elements: ${names}${suffix}`,
+        elementPath: "multi-select",
+        boundingBox: {
+          x: bounds.left,
+          y: bounds.top + window.scrollY,
+          width: bounds.right - bounds.left,
+          height: bounds.bottom - bounds.top,
+        },
+        isMultiSelect: true,
+        isFixed: lastIsFixed,
+        elementBoundingBoxes,
+        multiSelectElements: pendingMultiSelectElements.map((item) => item.element),
+        targetElement: lastEl, // Anchor marker/popup to last clicked element
+        fullPath: getFullElementPath(firstEl),
+        accessibility: getAccessibilityInfo(firstEl),
+        computedStyles: getForensicComputedStyles(firstEl),
+        computedStylesObj: getDetailedComputedStyles(firstEl),
+        nearbyElements: getNearbyElements(firstEl),
+        cssClasses: getElementClasses(firstEl),
+        nearbyText: getNearbyText(firstEl),
+      });
+    }
+
+    setPendingMultiSelectElements([]);
+    setHoverInfo(null);
+  }, [pendingMultiSelectElements]);
+
   // Reset state when deactivating
   useEffect(() => {
     if (!isActive) {
       setPendingAnnotation(null);
       setEditingAnnotation(null);
+      setEditingTargetElement(null);
+      setEditingTargetElements([]);
       setHoverInfo(null);
       setShowSettings(false); // Close settings when toolbar closes
+      setPendingMultiSelectElements([]); // Clear multi-select
+      modifiersHeldRef.current = { cmd: false, shift: false }; // Reset modifier tracking
       if (isFrozen) {
         unfreezeAnimations();
       }
@@ -1299,6 +1439,46 @@ export function PageFeedbackToolbarCSS({
       if (closestCrossingShadow(target, "[data-annotation-popup]")) return;
       if (closestCrossingShadow(target, "[data-annotation-marker]")) return;
 
+      // Handle cmd+shift+click for multi-element selection
+      if (e.metaKey && e.shiftKey && !pendingAnnotation && !editingAnnotation) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const elementUnder = deepElementFromPoint(e.clientX, e.clientY);
+        if (!elementUnder) return;
+
+        const rect = elementUnder.getBoundingClientRect();
+        const { name, path, reactComponents } = identifyElementWithReact(
+          elementUnder,
+          effectiveReactMode,
+        );
+
+        // Toggle: check if already selected
+        const existingIndex = pendingMultiSelectElements.findIndex(
+          (item) => item.element === elementUnder,
+        );
+
+        if (existingIndex >= 0) {
+          // Deselect
+          setPendingMultiSelectElements((prev) =>
+            prev.filter((_, i) => i !== existingIndex),
+          );
+        } else {
+          // Select
+          setPendingMultiSelectElements((prev) => [
+            ...prev,
+            {
+              element: elementUnder,
+              rect,
+              name,
+              path,
+              reactComponents: reactComponents ?? undefined,
+            },
+          ]);
+        }
+        return;
+      }
+
       const isInteractive = closestCrossingShadow(
         target,
         "button, a, input, select, textarea, [role='button'], [onclick]",
@@ -1376,6 +1556,7 @@ export function PageFeedbackToolbarCSS({
         computedStylesObj,
         nearbyElements: getNearbyElements(elementUnder),
         reactComponents: reactComponents ?? undefined,
+        targetElement: elementUnder, // Store for live position queries
       });
       setHoverInfo(null);
     };
@@ -1389,7 +1570,53 @@ export function PageFeedbackToolbarCSS({
     editingAnnotation,
     settings.blockInteractions,
     effectiveReactMode,
+    pendingMultiSelectElements,
   ]);
+
+  // Cmd+shift+click multi-select: keyup listener for modifier release
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Meta") modifiersHeldRef.current.cmd = true;
+      if (e.key === "Shift") modifiersHeldRef.current.shift = true;
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      const wasHoldingBoth =
+        modifiersHeldRef.current.cmd && modifiersHeldRef.current.shift;
+
+      if (e.key === "Meta") modifiersHeldRef.current.cmd = false;
+      if (e.key === "Shift") modifiersHeldRef.current.shift = false;
+
+      const nowHoldingBoth =
+        modifiersHeldRef.current.cmd && modifiersHeldRef.current.shift;
+
+      // Released modifier while holding elements → trigger popup
+      if (
+        wasHoldingBoth &&
+        !nowHoldingBoth &&
+        pendingMultiSelectElements.length > 0
+      ) {
+        createMultiSelectPendingAnnotation();
+      }
+    };
+
+    // Reset modifier state AND clear selection when window loses focus (e.g., cmd+tab away)
+    const handleBlur = () => {
+      modifiersHeldRef.current = { cmd: false, shift: false };
+      setPendingMultiSelectElements([]);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleBlur);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleBlur);
+    };
+  }, [isActive, pendingMultiSelectElements, createMultiSelectPendingAnnotation]);
 
   // Multi-select drag - mousedown
   useEffect(() => {
@@ -1876,6 +2103,7 @@ export function PageFeedbackToolbarCSS({
         computedStyles: pendingAnnotation.computedStyles,
         nearbyElements: pendingAnnotation.nearbyElements,
         reactComponents: pendingAnnotation.reactComponents,
+        elementBoundingBoxes: pendingAnnotation.elementBoundingBoxes,
         // Protocol fields for server sync
         ...(endpoint && currentSessionId
           ? {
@@ -1969,6 +2197,8 @@ export function PageFeedbackToolbarCSS({
         setEditExiting(true);
         setTimeout(() => {
           setEditingAnnotation(null);
+          setEditingTargetElement(null);
+          setEditingTargetElements([]);
           setEditExiting(false);
         }, 150);
       }
@@ -2016,7 +2246,111 @@ export function PageFeedbackToolbarCSS({
   const startEditAnnotation = useCallback((annotation: Annotation) => {
     setEditingAnnotation(annotation);
     setHoveredMarkerId(null);
+    setHoveredTargetElement(null);
+    setHoveredTargetElements([]);
+
+    // Try to find elements at the annotation's position(s) for live tracking
+    if (annotation.elementBoundingBoxes?.length) {
+      // Cmd+shift+click: find element at each bounding box center
+      const elements: HTMLElement[] = [];
+      for (const bb of annotation.elementBoundingBoxes) {
+        const centerX = bb.x + bb.width / 2;
+        const centerY = bb.y + bb.height / 2 - window.scrollY;
+        const el = deepElementFromPoint(centerX, centerY);
+        if (el) elements.push(el);
+      }
+      setEditingTargetElements(elements);
+      setEditingTargetElement(null);
+    } else if (annotation.boundingBox) {
+      // Single element
+      const bb = annotation.boundingBox;
+      const centerX = bb.x + bb.width / 2;
+      // Convert document coords to viewport coords (unless fixed)
+      const centerY = annotation.isFixed
+        ? bb.y + bb.height / 2
+        : bb.y + bb.height / 2 - window.scrollY;
+      const el = deepElementFromPoint(centerX, centerY);
+
+      // Validate found element's size roughly matches stored bounding box
+      if (el) {
+        const elRect = el.getBoundingClientRect();
+        const widthRatio = elRect.width / bb.width;
+        const heightRatio = elRect.height / bb.height;
+        if (widthRatio < 0.5 || heightRatio < 0.5) {
+          setEditingTargetElement(null);
+        } else {
+          setEditingTargetElement(el);
+        }
+      } else {
+        setEditingTargetElement(null);
+      }
+      setEditingTargetElements([]);
+    } else {
+      setEditingTargetElement(null);
+      setEditingTargetElements([]);
+    }
   }, []);
+
+  // Handle marker hover - finds element(s) for live position tracking
+  const handleMarkerHover = useCallback(
+    (annotation: Annotation | null) => {
+      if (!annotation) {
+        setHoveredMarkerId(null);
+        setHoveredTargetElement(null);
+        setHoveredTargetElements([]);
+        return;
+      }
+
+      setHoveredMarkerId(annotation.id);
+
+      // Find elements at the annotation's position(s) for live tracking
+      if (annotation.elementBoundingBoxes?.length) {
+        // Cmd+shift+click: find element at each bounding box center
+        const elements: HTMLElement[] = [];
+        for (const bb of annotation.elementBoundingBoxes) {
+          const centerX = bb.x + bb.width / 2;
+          const centerY = bb.y + bb.height / 2 - window.scrollY;
+          // Use elementsFromPoint to look through the marker if it's covering
+          const allEls = document.elementsFromPoint(centerX, centerY);
+          const el = allEls.find(
+            (e) => !e.closest('[data-annotation-marker]') && !e.closest('[data-agentation-root]'),
+          ) as HTMLElement | undefined;
+          if (el) elements.push(el);
+        }
+        setHoveredTargetElements(elements);
+        setHoveredTargetElement(null);
+      } else if (annotation.boundingBox) {
+        // Single element
+        const bb = annotation.boundingBox;
+        const centerX = bb.x + bb.width / 2;
+        const centerY = annotation.isFixed
+          ? bb.y + bb.height / 2
+          : bb.y + bb.height / 2 - window.scrollY;
+        const el = deepElementFromPoint(centerX, centerY);
+
+        // Validate found element's size roughly matches stored bounding box
+        // (prevents using wrong child element when clicking center of a container)
+        if (el) {
+          const elRect = el.getBoundingClientRect();
+          const widthRatio = elRect.width / bb.width;
+          const heightRatio = elRect.height / bb.height;
+          // If found element is much smaller than stored, it's probably a child - don't use it
+          if (widthRatio < 0.5 || heightRatio < 0.5) {
+            setHoveredTargetElement(null);
+          } else {
+            setHoveredTargetElement(el);
+          }
+        } else {
+          setHoveredTargetElement(null);
+        }
+        setHoveredTargetElements([]);
+      } else {
+        setHoveredTargetElement(null);
+        setHoveredTargetElements([]);
+      }
+    },
+    [],
+  );
 
   // Update annotation (edit mode submit)
   const updateAnnotation = useCallback(
@@ -2051,6 +2385,8 @@ export function PageFeedbackToolbarCSS({
       setEditExiting(true);
       setTimeout(() => {
         setEditingAnnotation(null);
+        setEditingTargetElement(null);
+        setEditingTargetElements([]);
         setEditExiting(false);
       }, 150);
     },
@@ -2062,6 +2398,8 @@ export function PageFeedbackToolbarCSS({
     setEditExiting(true);
     setTimeout(() => {
       setEditingAnnotation(null);
+      setEditingTargetElement(null);
+      setEditingTargetElements([]);
       setEditExiting(false);
     }, 150);
   }, []);
@@ -2348,6 +2686,11 @@ export function PageFeedbackToolbarCSS({
         target.isContentEditable;
 
       if (e.key === "Escape") {
+        // Clear multi-select if active
+        if (pendingMultiSelectElements.length > 0) {
+          setPendingMultiSelectElements([]);
+          return;
+        }
         if (pendingAnnotation) {
           // Let popup handle
         } else if (isActive) {
@@ -2422,6 +2765,7 @@ export function PageFeedbackToolbarCSS({
     toggleFreeze,
     copyOutput,
     clearAll,
+    pendingMultiSelectElements,
   ]);
 
   if (!mounted) return null;
@@ -3169,9 +3513,9 @@ export function PageFeedbackToolbarCSS({
                   onMouseEnter={() =>
                     !markersExiting &&
                     annotation.id !== recentlyAddedIdRef.current &&
-                    setHoveredMarkerId(annotation.id)
+                    handleMarkerHover(annotation)
                   }
-                  onMouseLeave={() => setHoveredMarkerId(null)}
+                  onMouseLeave={() => handleMarkerHover(null)}
                   onClick={(e) => {
                     e.stopPropagation();
                     console.log(
@@ -3303,9 +3647,9 @@ export function PageFeedbackToolbarCSS({
                   onMouseEnter={() =>
                     !markersExiting &&
                     annotation.id !== recentlyAddedIdRef.current &&
-                    setHoveredMarkerId(annotation.id)
+                    handleMarkerHover(annotation)
                   }
-                  onMouseLeave={() => setHoveredMarkerId(null)}
+                  onMouseLeave={() => handleMarkerHover(null)}
                   onClick={(e) => {
                     e.stopPropagation();
                     console.log(
@@ -3418,6 +3762,38 @@ export function PageFeedbackToolbarCSS({
               />
             )}
 
+          {/* Cmd+shift+click multi-select highlights (during selection, before releasing modifiers) */}
+          {pendingMultiSelectElements
+            .filter((item) => document.contains(item.element))
+            .map((item, index) => {
+              const rect = item.element.getBoundingClientRect();
+              // Only show green if 2+ elements selected, otherwise use default blue
+              const isMulti = pendingMultiSelectElements.length > 1;
+              return (
+                <div
+                  key={index}
+                  className={
+                    isMulti
+                      ? styles.multiSelectOutline
+                      : styles.singleSelectOutline
+                  }
+                  style={{
+                    position: "fixed",
+                    left: rect.left,
+                    top: rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                    ...(isMulti
+                      ? {}
+                      : {
+                          borderColor: `${settings.annotationColor}99`,
+                          backgroundColor: `${settings.annotationColor}0D`,
+                        }),
+                  }}
+                />
+              );
+            })}
+
           {/* Marker hover outline (shows bounding box of hovered annotation) */}
           {hoveredMarkerId &&
             !pendingAnnotation &&
@@ -3426,14 +3802,70 @@ export function PageFeedbackToolbarCSS({
                 (a) => a.id === hoveredMarkerId,
               );
               if (!hoveredAnnotation?.boundingBox) return null;
-              const bb = hoveredAnnotation.boundingBox;
+
+              // Render individual element boxes if available (cmd+shift+click multi-select)
+              if (hoveredAnnotation.elementBoundingBoxes?.length) {
+                // Use live positions from hoveredTargetElements when available
+                if (hoveredTargetElements.length > 0) {
+                  return hoveredTargetElements
+                    .filter((el) => document.contains(el))
+                    .map((el, index) => {
+                      const rect = el.getBoundingClientRect();
+                      return (
+                        <div
+                          key={`hover-outline-live-${index}`}
+                          className={`${styles.multiSelectOutline} ${styles.enter}`}
+                          style={{
+                            left: rect.left,
+                            top: rect.top,
+                            width: rect.width,
+                            height: rect.height,
+                          }}
+                        />
+                      );
+                    });
+                }
+                // Fallback to stored bounding boxes
+                return hoveredAnnotation.elementBoundingBoxes.map(
+                  (bb, index) => (
+                    <div
+                      key={`hover-outline-${index}`}
+                      className={`${styles.multiSelectOutline} ${styles.enter}`}
+                      style={{
+                        left: bb.x,
+                        top: bb.y - scrollY,
+                        width: bb.width,
+                        height: bb.height,
+                      }}
+                    />
+                  ),
+                );
+              }
+
+              // Single element: use live position from hoveredTargetElement when available
+              const rect =
+                hoveredTargetElement && document.contains(hoveredTargetElement)
+                  ? hoveredTargetElement.getBoundingClientRect()
+                  : null;
+
+              const bb = rect
+                ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+                : {
+                    x: hoveredAnnotation.boundingBox.x,
+                    y: hoveredAnnotation.isFixed
+                      ? hoveredAnnotation.boundingBox.y
+                      : hoveredAnnotation.boundingBox.y - scrollY,
+                    width: hoveredAnnotation.boundingBox.width,
+                    height: hoveredAnnotation.boundingBox.height,
+                  };
+
               const isMulti = hoveredAnnotation.isMultiSelect;
               return (
                 <div
                   className={`${isMulti ? styles.multiSelectOutline : styles.singleSelectOutline} ${styles.enter}`}
                   style={{
                     left: bb.x,
-                    top: bb.y - scrollY,
+                    top: bb.y,
                     width: bb.width,
                     height: bb.height,
                     ...(isMulti
@@ -3477,77 +3909,127 @@ export function PageFeedbackToolbarCSS({
           {pendingAnnotation && (
             <>
               {/* Show element/area outline while adding annotation */}
-              {pendingAnnotation.boundingBox && (
-                <div
-                  className={`${pendingAnnotation.isMultiSelect ? styles.multiSelectOutline : styles.singleSelectOutline} ${pendingExiting ? styles.exit : styles.enter}`}
-                  style={{
-                    left: pendingAnnotation.boundingBox.x,
-                    top: pendingAnnotation.boundingBox.y - scrollY,
-                    width: pendingAnnotation.boundingBox.width,
-                    height: pendingAnnotation.boundingBox.height,
-                    ...(pendingAnnotation.isMultiSelect
-                      ? {}
-                      : {
-                          borderColor: `${settings.annotationColor}99`,
-                          backgroundColor: `${settings.annotationColor}0D`,
-                        }),
-                  }}
-                />
-              )}
+              {pendingAnnotation.multiSelectElements?.length
+                ? // Cmd+shift+click multi-select: show individual boxes with live positions
+                  pendingAnnotation.multiSelectElements
+                    .filter((el) => document.contains(el))
+                    .map((el, index) => {
+                      const rect = el.getBoundingClientRect();
+                      return (
+                        <div
+                          key={`pending-multi-${index}`}
+                          className={`${styles.multiSelectOutline} ${pendingExiting ? styles.exit : styles.enter}`}
+                          style={{
+                            left: rect.left,
+                            top: rect.top,
+                            width: rect.width,
+                            height: rect.height,
+                          }}
+                        />
+                      );
+                    })
+                : // Single element or drag multi-select: show single box
+                  pendingAnnotation.targetElement &&
+                  document.contains(pendingAnnotation.targetElement)
+                    ? // Single-click: use live getBoundingClientRect for consistent positioning
+                      (() => {
+                        const rect =
+                          pendingAnnotation.targetElement!.getBoundingClientRect();
+                        return (
+                          <div
+                            className={`${styles.singleSelectOutline} ${pendingExiting ? styles.exit : styles.enter}`}
+                            style={{
+                              left: rect.left,
+                              top: rect.top,
+                              width: rect.width,
+                              height: rect.height,
+                              borderColor: `${settings.annotationColor}99`,
+                              backgroundColor: `${settings.annotationColor}0D`,
+                            }}
+                          />
+                        );
+                      })()
+                    : // Drag selection or fallback: use stored boundingBox
+                      pendingAnnotation.boundingBox && (
+                        <div
+                          className={`${pendingAnnotation.isMultiSelect ? styles.multiSelectOutline : styles.singleSelectOutline} ${pendingExiting ? styles.exit : styles.enter}`}
+                          style={{
+                            left: pendingAnnotation.boundingBox.x,
+                            top: pendingAnnotation.boundingBox.y - scrollY,
+                            width: pendingAnnotation.boundingBox.width,
+                            height: pendingAnnotation.boundingBox.height,
+                            ...(pendingAnnotation.isMultiSelect
+                              ? {}
+                              : {
+                                  borderColor: `${settings.annotationColor}99`,
+                                  backgroundColor: `${settings.annotationColor}0D`,
+                                }),
+                          }}
+                        />
+                      )}
 
-              <div
-                className={`${styles.marker} ${styles.pending} ${pendingAnnotation.isMultiSelect ? styles.multiSelect : ""} ${pendingExiting ? styles.exit : styles.enter}`}
-                style={{
-                  left: `${pendingAnnotation.x}%`,
-                  top: pendingAnnotation.clientY,
-                  backgroundColor: pendingAnnotation.isMultiSelect
-                    ? "#34C759"
-                    : settings.annotationColor,
-                }}
-              >
-                <IconPlus size={12} />
-              </div>
+              {(() => {
+                // Use stored coordinates - they match what will be saved
+                const markerX = pendingAnnotation.x;
+                const markerY = pendingAnnotation.isFixed
+                  ? pendingAnnotation.y
+                  : pendingAnnotation.y - scrollY;
 
-              <AnnotationPopupCSS
-                ref={popupRef}
-                element={pendingAnnotation.element}
-                selectedText={pendingAnnotation.selectedText}
-                computedStyles={pendingAnnotation.computedStylesObj}
-                placeholder={
-                  pendingAnnotation.element === "Area selection"
-                    ? "What should change in this area?"
-                    : pendingAnnotation.isMultiSelect
-                      ? "Feedback for this group of elements..."
-                      : "What should change?"
-                }
-                onSubmit={addAnnotation}
-                onCancel={cancelAnnotation}
-                isExiting={pendingExiting}
-                lightMode={!isDarkMode}
-                accentColor={
-                  pendingAnnotation.isMultiSelect
-                    ? "#34C759"
-                    : settings.annotationColor
-                }
-                style={{
-                  // Popup is 280px wide, centered with translateX(-50%), so 140px each side
-                  // Clamp so popup stays 20px from viewport edges
-                  left: Math.max(
-                    160,
-                    Math.min(
-                      window.innerWidth - 160,
-                      (pendingAnnotation.x / 100) * window.innerWidth,
-                    ),
-                  ),
-                  // Position popup above or below marker to keep marker visible
-                  ...(pendingAnnotation.clientY > window.innerHeight - 290
-                    ? {
-                        bottom:
-                          window.innerHeight - pendingAnnotation.clientY + 20,
+                return (
+                  <>
+                    <div
+                      className={`${styles.marker} ${styles.pending} ${pendingAnnotation.isMultiSelect ? styles.multiSelect : ""} ${pendingExiting ? styles.exit : styles.enter}`}
+                      style={{
+                        left: `${markerX}%`,
+                        top: markerY,
+                        backgroundColor: pendingAnnotation.isMultiSelect
+                          ? "#34C759"
+                          : settings.annotationColor,
+                      }}
+                    >
+                      <IconPlus size={12} />
+                    </div>
+
+                    <AnnotationPopupCSS
+                      ref={popupRef}
+                      element={pendingAnnotation.element}
+                      selectedText={pendingAnnotation.selectedText}
+                      computedStyles={pendingAnnotation.computedStylesObj}
+                      placeholder={
+                        pendingAnnotation.element === "Area selection"
+                          ? "What should change in this area?"
+                          : pendingAnnotation.isMultiSelect
+                            ? "Feedback for this group of elements..."
+                            : "What should change?"
                       }
-                    : { top: pendingAnnotation.clientY + 20 }),
-                }}
-              />
+                      onSubmit={addAnnotation}
+                      onCancel={cancelAnnotation}
+                      isExiting={pendingExiting}
+                      lightMode={!isDarkMode}
+                      accentColor={
+                        pendingAnnotation.isMultiSelect
+                          ? "#34C759"
+                          : settings.annotationColor
+                      }
+                      style={{
+                        // Popup is 280px wide, centered with translateX(-50%), so 140px each side
+                        // Clamp so popup stays 20px from viewport edges
+                        left: Math.max(
+                          160,
+                          Math.min(
+                            window.innerWidth - 160,
+                            (markerX / 100) * window.innerWidth,
+                          ),
+                        ),
+                        // Position popup above or below marker to keep marker visible
+                        ...(markerY > window.innerHeight - 290
+                          ? { bottom: window.innerHeight - markerY + 20 }
+                          : { top: markerY + 20 }),
+                      }}
+                    />
+                  </>
+                );
+              })()}
             </>
           )}
 
@@ -3555,23 +4037,87 @@ export function PageFeedbackToolbarCSS({
           {editingAnnotation && (
             <>
               {/* Show element/area outline while editing */}
-              {editingAnnotation.boundingBox && (
-                <div
-                  className={`${editingAnnotation.isMultiSelect ? styles.multiSelectOutline : styles.singleSelectOutline} ${styles.enter}`}
-                  style={{
-                    left: editingAnnotation.boundingBox.x,
-                    top: editingAnnotation.boundingBox.y - scrollY,
-                    width: editingAnnotation.boundingBox.width,
-                    height: editingAnnotation.boundingBox.height,
-                    ...(editingAnnotation.isMultiSelect
-                      ? {}
-                      : {
-                          borderColor: `${settings.annotationColor}99`,
-                          backgroundColor: `${settings.annotationColor}0D`,
-                        }),
-                  }}
-                />
-              )}
+              {editingAnnotation.elementBoundingBoxes?.length
+                ? // Cmd+shift+click: show individual element boxes (use live rects when available)
+                  (() => {
+                    // Use live positions from editingTargetElements when available
+                    if (editingTargetElements.length > 0) {
+                      return editingTargetElements
+                        .filter((el) => document.contains(el))
+                        .map((el, index) => {
+                          const rect = el.getBoundingClientRect();
+                          return (
+                            <div
+                              key={`edit-multi-live-${index}`}
+                              className={`${styles.multiSelectOutline} ${styles.enter}`}
+                              style={{
+                                left: rect.left,
+                                top: rect.top,
+                                width: rect.width,
+                                height: rect.height,
+                              }}
+                            />
+                          );
+                        });
+                    }
+                    // Fallback to stored bounding boxes
+                    return editingAnnotation.elementBoundingBoxes!.map(
+                      (bb, index) => (
+                        <div
+                          key={`edit-multi-${index}`}
+                          className={`${styles.multiSelectOutline} ${styles.enter}`}
+                          style={{
+                            left: bb.x,
+                            top: bb.y - scrollY,
+                            width: bb.width,
+                            height: bb.height,
+                          }}
+                        />
+                      ),
+                    );
+                  })()
+                : // Single element or drag multi-select: show single box
+                  (() => {
+                    // Use live position from editingTargetElement when available
+                    const rect =
+                      editingTargetElement &&
+                      document.contains(editingTargetElement)
+                        ? editingTargetElement.getBoundingClientRect()
+                        : null;
+
+                    const bb = rect
+                      ? { x: rect.left, y: rect.top, width: rect.width, height: rect.height }
+                      : editingAnnotation.boundingBox
+                        ? {
+                            x: editingAnnotation.boundingBox.x,
+                            y: editingAnnotation.isFixed
+                              ? editingAnnotation.boundingBox.y
+                              : editingAnnotation.boundingBox.y - scrollY,
+                            width: editingAnnotation.boundingBox.width,
+                            height: editingAnnotation.boundingBox.height,
+                          }
+                        : null;
+
+                    if (!bb) return null;
+
+                    return (
+                      <div
+                        className={`${editingAnnotation.isMultiSelect ? styles.multiSelectOutline : styles.singleSelectOutline} ${styles.enter}`}
+                        style={{
+                          left: bb.x,
+                          top: bb.y,
+                          width: bb.width,
+                          height: bb.height,
+                          ...(editingAnnotation.isMultiSelect
+                            ? {}
+                            : {
+                                borderColor: `${settings.annotationColor}99`,
+                                backgroundColor: `${settings.annotationColor}0D`,
+                              }),
+                        }}
+                      />
+                    );
+                  })()}
 
               <AnnotationPopupCSS
                 ref={editPopupRef}

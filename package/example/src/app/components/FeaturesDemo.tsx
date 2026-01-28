@@ -25,7 +25,7 @@ const features: Feature[] = [
   {
     key: "multi-select",
     label: "Multi-Select",
-    caption: "Drag to select multiple elements at once.\nAll selected elements are included in a single annotation.",
+    caption: "Hold `⌘`+`⇧` and click elements individually, or drag to select multiple at once.\nAll selected elements are included in a single annotation.",
   },
   {
     key: "area-selection",
