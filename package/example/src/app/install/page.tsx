@@ -218,7 +218,7 @@ export default function InstallPage() {
 
         <section>
           <h2>Install the package</h2>
-          <CodeBlock code="npm install agentation" language="bash" copyable />
+          <CodeBlock code="npm install agentation -D" language="bash" copyable />
           <p
             style={{
               fontSize: "0.875rem",
@@ -227,9 +227,9 @@ export default function InstallPage() {
             }}
           >
             Or use{" "}
-            <CopyablePackageManager name="yarn" command="yarn add agentation" />,{" "}
-            <CopyablePackageManager name="pnpm" command="pnpm add agentation" />, or{" "}
-            <CopyablePackageManager name="bun" command="bun add agentation" />.
+            <CopyablePackageManager name="yarn" command="yarn add agentation --dev" />,{" "}
+            <CopyablePackageManager name="pnpm" command="pnpm add agentation -D" />, or{" "}
+            <CopyablePackageManager name="bun" command="bun add agentation -d" />.
           </p>
         </section>
 
@@ -260,7 +260,7 @@ function App() {
           <p>
             If you use Claude Code, you can set up Agentation automatically with the <code>/agentation</code> skill. Install it:
           </p>
-          <CodeBlock code="npx add-skill benjitaylor/agentation" language="bash" copyable />
+          <CodeBlock code="npx skills add benjitaylor/agentation" language="bash" copyable />
           <p style={{ marginTop: "1rem" }}>
             Then in Claude Code:
           </p>
@@ -429,11 +429,19 @@ function App() {
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.5rem 0" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                   <code>onCopy</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Fired when copy button is clicked (receives markdown)
+                </td>
+              </tr>
+              <tr>
+                <td style={{ padding: "0.5rem 0" }}>
+                  <code>onSubmit</code>
+                </td>
+                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
+                  Fired when &quot;Send to Agent&quot; is clicked
                 </td>
               </tr>
             </tbody>

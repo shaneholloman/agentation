@@ -231,11 +231,11 @@ type ThreadMessage = {
             code={`type AgentationEvent = {
   type: "annotation.created" | "annotation.updated" | "annotation.deleted"
       | "session.created" | "session.updated" | "session.closed"
-      | "thread.message";
+      | "thread.message" | "action.requested";
   timestamp: string;     // ISO 8601
   sessionId: string;
   sequence: number;      // Monotonic for ordering/replay
-  payload: Annotation | Session | ThreadMessage;
+  payload: Annotation | Session | ThreadMessage | ActionRequest;
 };`}
           />
           <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>

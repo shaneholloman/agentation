@@ -34,7 +34,7 @@ The toolbar appears in the bottom-right corner. Click to activate, then click an
 - **Animation pause** – Freeze CSS animations to capture specific states
 - **Structured output** – Copy markdown with selectors, positions, and context
 - **Programmatic access** – Callback prop for direct integration with tools
-- **Dark/light mode** – Matches your preference or set manually
+- **Dark/light mode** – Toggle in settings, persists to localStorage
 - **Zero dependencies** – Pure CSS animations, no runtime libraries
 
 ## Props
@@ -46,7 +46,12 @@ The toolbar appears in the bottom-right corner. Click to activate, then click an
 | `onAnnotationUpdate` | `(annotation: Annotation) => void` | - | Called when an annotation is edited |
 | `onAnnotationsClear` | `(annotations: Annotation[]) => void` | - | Called when all annotations are cleared |
 | `onCopy` | `(markdown: string) => void` | - | Callback with markdown output when copy is clicked |
+| `onSubmit` | `(output: string, annotations: Annotation[]) => void` | - | Called when "Send to Agent" is clicked |
 | `copyToClipboard` | `boolean` | `true` | Set to false to prevent writing to clipboard |
+| `endpoint` | `string` | - | Server URL for Agent Sync (e.g., `"http://localhost:4747"`) |
+| `sessionId` | `string` | - | Pre-existing session ID to join |
+| `onSessionCreated` | `(sessionId: string) => void` | - | Called when a new session is created |
+| `webhookUrl` | `string` | - | Webhook URL to receive annotation events |
 
 ### Programmatic Integration
 
@@ -85,7 +90,7 @@ function App() {
 type Annotation = {
   id: string;
   x: number;                    // % of viewport width
-  y: number;                    // px from top (viewport if fixed)
+  y: number;                    // px from top of document (absolute) OR viewport (if isFixed)
   comment: string;              // User's note
   element: string;              // e.g., "Button"
   elementPath: string;          // e.g., "body > div > button"
@@ -104,6 +109,8 @@ type Annotation = {
   isFixed?: boolean;
 };
 ```
+
+> **Note:** This is a simplified type. The full type includes additional fields for Agent Sync (`url`, `status`, `thread`, `reactComponents`, etc.). See [agentation.dev/schema](https://agentation.dev/schema) for the complete schema.
 
 ## How it works
 

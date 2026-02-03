@@ -27,11 +27,11 @@ const faqCategories: FAQCategory[] = [
       },
       {
         question: "How do I install it?",
-        answer: "Install via npm with <code>npm install agentation</code>, then import and add the <code>&lt;Agentation /&gt;</code> component to your app. Works with React 18 and Next.js."
+        answer: "Install via npm with <code>npm install agentation -D</code>, then import and add the <code>&lt;Agentation /&gt;</code> component to your app. Works with React 18 and Next.js."
       },
       {
         question: "Is there a Claude Code integration?",
-        answer: "Yes. Run <code>npx add-skill benjitaylor/agentation</code> in your terminal, then <code>/agentation</code> in Claude Code. It detects your framework, installs the package, creates a provider component, and wires it into your layout."
+        answer: "Yes. Run <code>npx skills add benjitaylor/agentation</code> in your terminal, then <code>/agentation</code> in Claude Code. It detects your framework, installs the package, creates a provider component, and wires it into your layout."
       },
     ]
   },
@@ -68,7 +68,7 @@ const faqCategories: FAQCategory[] = [
       },
       {
         question: "What is Agent Sync?",
-        answer: "Agent Sync connects the browser toolbar to an MCP server, enabling real-time sync between reviewers and AI agents. Annotations persist across pages and can be accessed via MCP tools. Run <code>npx agentation server</code> to start the server, then enable Agent Sync in settings."
+        answer: "Agent Sync connects the browser toolbar to an MCP server, enabling real-time sync between reviewers and AI agents. Annotations persist across pages and can be accessed via MCP tools. Run <code>npx agentation-mcp server</code> to start the server, then enable Agent Sync in settings."
       },
     ]
   },

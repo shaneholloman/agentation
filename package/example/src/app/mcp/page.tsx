@@ -103,9 +103,9 @@ npx agentation-mcp help      # Show help`}
           <CodeBlock language="bash" copyable code={`npx agentation-mcp server`} />
 
           <h3>2. Add the MCP server to Claude Code</h3>
-          <CodeBlock language="bash" copyable code={`claude mcp add http://localhost:4747/mcp`} />
+          <CodeBlock language="bash" copyable code={`npx agentation-mcp init`} />
           <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>
-            This registers the Agentation MCP server with Claude Code. Once connected, Claude can
+            This runs the interactive setup wizard to configure Claude Code. Once connected, Claude can
             use all the Agentation tools to read and respond to your annotations.
           </p>
 
@@ -261,8 +261,8 @@ npx agentation-mcp help      # Show help`}
   SessionStatus,       // "active" | "approved" | "closed"
   SessionWithAnnotations,
   ThreadMessage,
-  SAFEvent,
-  SAFEventType,
+  AFSEvent,
+  AFSEventType,
   ActionRequest,
 } from 'agentation-mcp';`}
           />

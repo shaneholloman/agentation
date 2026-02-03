@@ -65,7 +65,7 @@ Add to `~/.claude/settings.json` to enable for all projects:
 
 ## Requirements
 
-- Agentation server running (`npx agentation` or integrated in your app)
+- Agentation server running (`npx agentation-mcp server` or integrated in your app)
 - Python 3 (for JSON parsing - comes with macOS/most Linux)
 - curl (standard on most systems)
 

@@ -92,7 +92,7 @@ const releases: Release[] = [
     version: "1.1.1",
     date: "January 22, 2026",
     changes: [
-      { type: "added", text: "Claude Code skill for automatic setup (npx add-skill benjitaylor/agentation)" },
+      { type: "added", text: "Claude Code skill for automatic setup (npx skills add benjitaylor/agentation)" },
       { type: "fixed", text: "React key prop warning in color picker" },
     ],
   },
