@@ -3500,7 +3500,7 @@ export function PageFeedbackToolbarCSS({
                         </span>
                       </Tooltip>
                     </span>
-                    {endpoint ? (
+                    {endpoint && (
                       <div
                         className={`${styles.mcpStatusDot} ${styles[connectionStatus]}`}
                         title={
@@ -3511,15 +3511,6 @@ export function PageFeedbackToolbarCSS({
                               : "Disconnected"
                         }
                       />
-                    ) : (
-                      <a
-                        href="https://agentation.dev/install#mcp-server"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={styles.settingsLink}
-                      >
-                        Learn more →
-                      </a>
                     )}
                   </div>
                   <p

@@ -30,6 +30,13 @@ function isMajorVersion(version: string): boolean {
 
 const releases: Release[] = [
   {
+    version: "2.1.1",
+    date: "February 5, 2026",
+    changes: [
+      { type: "fixed", text: "Unstyled \"Learn more\" link in MCP Connection settings when no endpoint is configured" },
+    ],
+  },
+  {
     version: "2.1.0",
     date: "February 5, 2026",
     changes: [
