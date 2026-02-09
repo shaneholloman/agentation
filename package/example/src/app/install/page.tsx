@@ -306,8 +306,21 @@ function App() {
             Add Agentation as an MCP server in your agent&apos;s config. Example for Claude Code:
           </p>
           <CodeBlock
-            code={`// Edit ~/.claude/claude_code_config.json
-{
+            code="claude mcp add agentation -- npx agentation-mcp server"
+            language="bash"
+            copyable
+          />
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "rgba(0,0,0,0.5)",
+              marginTop: "0.5rem",
+            }}
+          >
+            Or add to your project&apos;s <code>.mcp.json</code> for team-wide config:
+          </p>
+          <CodeBlock
+            code={`{
   "mcpServers": {
     "agentation": {
       "command": "npx",

@@ -43,25 +43,12 @@ Set up the Agentation annotation toolbar in this project.
    - Tell the user the Agentation toolbar component is configured
 
 6. **Check if MCP server already configured**
-   - Read `~/.claude/claude_code_config.json` if it exists
-   - Check if `mcpServers.agentation` entry exists
+   - Run `claude mcp list` to check if `agentation` MCP server is already registered
    - If yes, skip to final confirmation step
 
 7. **Configure Claude Code MCP server**
-   - Create `~/.claude/` directory if it doesn't exist
-   - Read existing `claude_code_config.json` if present (preserve other MCP servers)
-   - Add or merge the `mcpServers.agentation` entry:
-     ```json
-     {
-       "mcpServers": {
-         "agentation": {
-           "command": "npx",
-           "args": ["agentation-mcp", "server"]
-         }
-       }
-     }
-     ```
-   - Write updated config back to file
+   - Run: `claude mcp add agentation -- npx agentation-mcp server`
+   - This registers the MCP server with Claude Code automatically
 
 8. **Confirm full setup**
    - Tell the user both components are set up:
