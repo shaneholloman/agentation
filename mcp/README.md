@@ -16,13 +16,13 @@ pnpm add agentation-mcp
 
 ### 1. Set up the MCP server
 
-Run the interactive setup wizard:
+Add the MCP server to Claude Code:
 
 ```bash
-agentation-mcp init
+claude mcp add agentation -- npx agentation-mcp server
 ```
 
-This will configure Claude Code to use the Agentation MCP server.
+Or use the interactive setup wizard: `npx agentation-mcp init`
 
 ### 2. Start the server
 
@@ -43,7 +43,7 @@ agentation-mcp doctor
 ## CLI Commands
 
 ```bash
-agentation-mcp init                    # Interactive setup wizard
+agentation-mcp init                    # Setup wizard (registers via claude mcp add)
 agentation-mcp server [options]        # Start the annotation server
 agentation-mcp doctor                  # Check your setup
 agentation-mcp help                    # Show help
