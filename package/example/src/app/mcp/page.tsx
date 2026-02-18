@@ -55,21 +55,27 @@ pnpm add agentation-mcp`}
         <section>
           <h2 id="quick-start">Quick Start</h2>
 
-          <h3>1. Set up the MCP server</h3>
-          <p>Run the interactive setup wizard:</p>
+          <h3>1. Add to your agent</h3>
+          <p>
+            The fastest way to configure Agentation across any supported agent:
+          </p>
+          <CodeBlock language="bash" copyable code={`npx add-mcp "npx -y agentation-mcp server"`} />
+          <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>
+            Uses{" "}
+            <a href="https://github.com/neondatabase/add-mcp" target="_blank" rel="noopener noreferrer">add-mcp</a>{" "}
+            to auto-detect installed agents (Claude Code, Cursor, Codex, Windsurf, and more) and write the correct config.
+          </p>
+
+          <p style={{ marginTop: "0.75rem" }}>
+            Or use the interactive wizard for Claude Code specifically:
+          </p>
           <CodeBlock language="bash" copyable code={`npx agentation-mcp init`} />
-          <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>
-            This configures Claude Code to use the Agentation MCP server.
-          </p>
 
-          <h3>2. Start the server</h3>
-          <CodeBlock language="bash" copyable code={`npx agentation-mcp server`} />
-          <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>
-            This starts both the HTTP server (port 4747) and MCP server (stdio).
-          </p>
-
-          <h3>3. Verify your setup</h3>
+          <h3>2. Verify your setup</h3>
           <CodeBlock language="bash" copyable code={`npx agentation-mcp doctor`} />
+          <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>
+            Checks Node.js version, agent config, and server connectivity.
+          </p>
         </section>
 
         <section>
@@ -99,13 +105,16 @@ npx agentation-mcp help      # Show help`}
             To connect Claude Code to the Agentation MCP server:
           </p>
 
-          <h3>1. Start the server</h3>
-          <CodeBlock language="bash" copyable code={`npx agentation-mcp server`} />
-
-          <h3>2. Add the MCP server to Claude Code</h3>
-          <CodeBlock language="bash" copyable code={`claude mcp add agentation -- npx agentation-mcp server`} />
+          <h3>1. Add the MCP server</h3>
+          <CodeBlock language="bash" copyable code={`npx add-mcp "npx -y agentation-mcp server"`} />
           <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>
-            Or use the interactive setup wizard: <code>npx agentation-mcp init</code>
+            Or use <code>claude mcp add agentation -- npx agentation-mcp server</code> or the interactive wizard: <code>npx agentation-mcp init</code>
+          </p>
+
+          <h3>2. Restart Claude Code</h3>
+          <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)" }}>
+            The MCP server starts automatically when Claude Code launches. Once connected, Claude can
+            use all the Agentation tools to read and respond to your annotations.
           </p>
 
           <h3>3. Verify the connection</h3>
@@ -303,7 +312,7 @@ Continue watching until I say stop or timeout is reached.`}
           <CodeBlock
             language="bash"
             copyable
-            code={`npx skills add agent-browser`}
+            code={`npx skills add vercel-labs/agent-browser`}
           />
         </section>
 
